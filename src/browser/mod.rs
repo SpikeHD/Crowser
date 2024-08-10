@@ -3,7 +3,7 @@ use std::{env, path::PathBuf};
 pub mod chromium;
 pub mod firefox;
 
-pub trait Append<T> {
+trait Append<T> {
   fn append(self, value: T) -> Self;
 }
 
@@ -44,7 +44,7 @@ pub struct Browser {
 }
 
 lazy_static::lazy_static! {
-  pub static ref BROWSERS: Vec<Browser> = vec![
+  static ref BROWSERS: Vec<Browser> = vec![
     Browser {
       name: "chrome",
       kind: BrowserKind::Chromium,
@@ -254,6 +254,11 @@ fn generate_windows_paths(path: PathBuf) -> Vec<PathBuf> {
   paths
 }
 
+/// Get all supported browsers
+pub fn get_supported_browsers() -> Vec<Browser> {
+  BROWSERS.iter().cloned().collect()
+}
+
 /// Get the best browser based on the provided kind.
 /// If no kind is provided, the first found supported browser is returned.
 pub fn get_best_browser(kind: Option<BrowserKind>) -> Option<(Browser, PathBuf)> {
@@ -272,6 +277,7 @@ pub fn get_best_browser(kind: Option<BrowserKind>) -> Option<(Browser, PathBuf)>
   None
 }
 
+/// Get all browsers available on the system
 pub fn get_all_existing_browsers() -> Vec<(Browser, PathBuf)> {
   let mut valid: Vec<(Browser, PathBuf)> = vec![];
 

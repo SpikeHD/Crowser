@@ -32,18 +32,20 @@ pub enum ContentConfig {
   Remote(RemoteConfig),
 }
 
+/// Configuration for a local (i.e bundled) website/web app
 #[derive(Debug, Clone)]
 pub struct LocalConfig {
   pub port: u16,
   pub directory: Dir<'static>,
 }
 
+/// Configuration for a remote (i.e hosted) website/web app
 #[derive(Debug, Clone)]
 pub struct RemoteConfig {
   pub url: String,
 }
 
-// Create a trait so the Window::new() can just be provided a LocalConfig or RemoteConfig
+// This is so the Window::new() can just be provided a LocalConfig or RemoteConfig
 // and it will automatically create the correct ContentConfig
 pub trait IntoContentConfig {
   fn into_content_config(self) -> ContentConfig;
@@ -61,6 +63,10 @@ impl IntoContentConfig for RemoteConfig {
   }
 }
 
+/// The main Window, representing a browser window
+/// 
+/// This struct is used to create and manage a browser window.
+/// It contains all configuration, controls, etc. needed to control the window.
 #[derive(Debug)]
 pub struct Window {
   created: bool,
@@ -121,6 +127,7 @@ impl Window {
     })
   }
 
+  /// Set the remote URL for the window, if it is configured to be remote.
   pub fn set_url(&mut self, url: impl AsRef<str>) -> Result<(), CrowserError> {
     match &mut self.config {
       ContentConfig::Remote(remote) => {
@@ -137,11 +144,14 @@ impl Window {
     Ok(())
   }
 
+  /// Set the window size
   pub fn set_size(&mut self, width: u32, height: u32) {
     self.width = width;
     self.height = height;
   }
 
+  /// Set the initialization script for the window.
+  /// This script will be run when the window is created or the contents are reloaded.
   pub fn set_initialization_script(&mut self, script: impl AsRef<str>) -> Result<(), CrowserError> {
     if self.created {
       return Err(CrowserError::DoAfterCreate(
@@ -154,6 +164,7 @@ impl Window {
     Ok(())
   }
 
+  /// Disable hardware acceleration in the browser window.
   pub fn disable_hardware_acceleration(&mut self) -> Result<(), CrowserError> {
     if self.created {
       return Err(CrowserError::DoAfterCreate(
@@ -166,6 +177,7 @@ impl Window {
     Ok(())
   }
 
+  /// Set Firefox-specific configuration options. This will have no effect if the window is not a Firefox window.
   pub fn set_firefox_config(&mut self, config: FirefoxConfig) -> Result<(), CrowserError> {
     if self.created {
       return Err(CrowserError::DoAfterCreate(
@@ -178,6 +190,7 @@ impl Window {
     Ok(())
   }
 
+  /// Set Chromium-specific configuration options. This will have no effect if the window is not a Chromium window.
   pub fn set_chromium_config(&mut self, config: ChromiumConfig) -> Result<(), CrowserError> {
     if self.created {
       return Err(CrowserError::DoAfterCreate(
@@ -190,6 +203,7 @@ impl Window {
     Ok(())
   }
 
+  /// Create the window after you have provided all the necessary configuration.
   pub fn create(&mut self) -> Result<(), CrowserError> {
     self.created = true;
 
@@ -272,6 +286,7 @@ impl Window {
     Ok(())
   }
 
+  /// Force kill the window. The death of the window will be detected and kill the webserver, if running a local configuration.
   pub fn kill(&mut self) -> Result<(), CrowserError> {
     if !self.created {
       return Err(CrowserError::DoBeforeCreate(
@@ -286,6 +301,7 @@ impl Window {
     Ok(())
   }
 
+  /// Wipe the profile directory for the window. This will remove all user data, settings, etc. for the window.
   pub fn clear_profile(&mut self) -> Result<(), CrowserError> {
     if self.created {
       return Err(CrowserError::DoAfterCreate(

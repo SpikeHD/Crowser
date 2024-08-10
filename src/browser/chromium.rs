@@ -2,8 +2,6 @@ use crate::{ContentConfig, Window};
 
 /// Generate command line options required to make Chromium-based browsers
 /// look like a standalone app.
-///
-/// Things like the initial URL, window size, etc. are available on the `Window`
 pub fn generate_cli_options(win: &Window) -> Vec<String> {
   let mut options = vec![];
 
