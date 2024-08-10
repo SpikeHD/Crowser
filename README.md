@@ -13,10 +13,13 @@
 
 ## Main features
 
-* \<1MB binary size with no external dependencies (except for the browser of course!)
+* \<1MB binary size with no external dependencies (except for the browser, of course!)
 * Multi-platform. Supports Windows, macOS, and Linux.
 * Support for both local and remote websites.
 * Maximizes performance of whatever browser is chosen, and uses an entirely separate browser profile.
+
+> [!NOTE]
+> This library will basically forever and always be intended for low-stakes or experimental use. It's really hard to guarantee working functionality and consistency across a bunch of different browsers, so please keep that in mind! 
 
 ## Browser support
 
@@ -31,6 +34,11 @@ All browser support comes with a few small caveats. You may notice small inconsi
 * Vivaldi
 * Librewolf
 * Waterfox
+
+> [!NOTE]
+> Not seeing your favorite browser? Feel free to submit an issue!
+>
+> If you have some programming/Rust experience, it's trivial to add new browsers to the [supported list](./src/browser/mod.rs).
 
 # Usage
 
@@ -97,3 +105,11 @@ fn main() -> Result<(), CrowserError> {
   Ok(())
 }
 ```
+
+# How does it work?
+
+On a high level, Crowser works by first detecting browser installations on the user's system (using known paths and ~~registry keys~~). Then, depending on the browser chosen, it will make some specific changes to the browser's CLI arguments,
+profile directory, or both. For example, for Firefox there is a `user.js` file in all profiles that can control much of the browser's default behavior. In Chromium-based browsers, there are a stupid amount of command-line arguments that can be
+used to control the browser's behavior ([check out this huge list!](https://peter.sh/experiments/chromium-command-line-switches/)).
+
+Regarding IPC, I haven't done it yet, so these docs are still TODO :P
