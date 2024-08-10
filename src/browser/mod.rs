@@ -149,7 +149,7 @@ lazy_static::lazy_static! {
     },
     Browser {
       name: "thorium",
-      kind: BrowserKind::Gecko,
+      kind: BrowserKind::Chromium,
       win: BrowserWindowsConfig {
         paths: generate_windows_paths(PathBuf::from("Thorium\\Application\\thorium.exe")),
         registry_keys: vec![],
