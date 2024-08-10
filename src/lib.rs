@@ -3,7 +3,7 @@ use std::{
   sync::{atomic::AtomicBool, Arc},
 };
 
-use browser::{Browser, BrowserKind};
+use browser::{get_browser_path, Browser, BrowserKind};
 use error::CrowserError;
 use include_dir::Dir;
 use shared_child::SharedChild;
@@ -72,7 +72,7 @@ pub struct Window {
   created: bool,
 
   config: ContentConfig,
-  browser: (Browser, PathBuf),
+  browser: Browser,
 
   profile_directory: PathBuf,
   process_handle: Option<SharedChild>,
@@ -141,6 +141,19 @@ impl Window {
     }
 
     // TODO If we are already created, we need to send the signal to the window to change the URL
+    Ok(())
+  }
+
+  /// Manually set the browser to use for the window.
+  pub fn set_browser(&mut self, browser: Browser) -> Result<(), CrowserError> {
+    if self.created {
+      return Err(CrowserError::DoAfterCreate(
+        "Cannot set browser after window is created".to_string(),
+      ));
+    }
+
+    self.browser = browser;
+
     Ok(())
   }
 
@@ -231,10 +244,20 @@ impl Window {
       }
     });
 
-    // TODO this needs to provide CLI options and crap
-    let mut cmd = std::process::Command::new(self.browser.1.clone());
+    let browser_path = get_browser_path(&self.browser);
 
-    cmd.args(match self.browser.0.kind {
+    if browser_path.is_none() {
+      return Err(CrowserError::NoBrowser(
+        "No compatible browsers on system! I don't know how you got this far...".to_string(),
+      ));
+    }
+
+    let browser_path = browser_path.unwrap();
+
+    // TODO this needs to provide CLI options and crap
+    let mut cmd = std::process::Command::new(browser_path);
+
+    cmd.args(match self.browser.kind {
       BrowserKind::Chromium => browser::chromium::generate_cli_options(self),
       BrowserKind::Gecko => browser::firefox::generate_cli_options(self),
       _ => {
@@ -242,7 +265,7 @@ impl Window {
       }
     });
 
-    if self.browser.0.kind == BrowserKind::Gecko {
+    if self.browser.kind == BrowserKind::Gecko {
       browser::firefox::write_extra_profile_files(self)?;
     }
 

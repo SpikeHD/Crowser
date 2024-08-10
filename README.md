@@ -36,6 +36,8 @@ All browser support comes with a few small caveats. You may notice small inconsi
 * Waterfox
 * Mercury
 
+Want to see what browsers are detected on your system? Run the `browsers` example with `cargo run --example browsers`!
+
 > [!TIP]
 > Not seeing your favorite browser? Feel free to submit an issue!
 >

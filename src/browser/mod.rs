@@ -281,16 +281,16 @@ pub fn get_supported_browsers() -> Vec<Browser> {
 
 /// Get the best browser based on the provided kind.
 /// If no kind is provided, the first found supported browser is returned.
-pub fn get_best_browser(kind: Option<BrowserKind>) -> Option<(Browser, PathBuf)> {
+pub fn get_best_browser(kind: Option<BrowserKind>) -> Option<Browser> {
   let browsers = get_all_existing_browsers();
 
-  for (browser, path) in browsers {
+  for browser in browsers {
     if let Some(k) = kind {
       if browser.kind == k {
-        return Some((browser, path));
+        return Some(browser);
       }
     } else {
-      return Some((browser, path));
+      return Some(browser);
     }
   }
 
@@ -298,36 +298,43 @@ pub fn get_best_browser(kind: Option<BrowserKind>) -> Option<(Browser, PathBuf)>
 }
 
 /// Get all browsers available on the system
-pub fn get_all_existing_browsers() -> Vec<(Browser, PathBuf)> {
-  let mut valid: Vec<(Browser, PathBuf)> = vec![];
+pub fn get_all_existing_browsers() -> Vec<Browser> {
+  let mut valid: Vec<Browser> = vec![];
 
   // Now look for the first browser that actually exists on the system
-  #[cfg(target_os = "windows")]
-  for browser in BROWSERS.iter() {
-    for path in &browser.win.paths {
+  for browser in get_supported_browsers() {
+    if let Some(path) = get_browser_path(&browser) {
       if path.exists() {
-        valid.push((browser.clone(), path.clone()));
-      }
-    }
-  }
-
-  #[cfg(target_os = "linux")]
-  for browser in BROWSERS.iter() {
-    for binary in &browser.unix {
-      if which::which(binary).is_ok() {
-        valid.push((browser.clone(), PathBuf::from(binary)));
-      }
-    }
-  }
-
-  #[cfg(target_os = "macos")]
-  for browser in BROWSERS.iter() {
-    for path in &browser.mac {
-      if path.exists() {
-        valid.push((browser.clone(), path.clone()));
+        valid.push(browser);
       }
     }
   }
 
   valid
+}
+
+/// Get the first valid path for a specific browser
+pub fn get_browser_path(browser: &Browser) -> Option<PathBuf> {
+  #[cfg(target_os = "windows")]
+  for path in &browser.win.paths {
+    if path.exists() {
+      return Some(path.clone());
+    }
+  }
+
+  #[cfg(target_os = "linux")]
+  for binary in &browser.unix {
+    if which::which(binary).is_ok() {
+      return Some(PathBuf::from(binary));
+    }
+  }
+
+  #[cfg(target_os = "macos")]
+  for path in &browser.mac {
+    if path.exists() {
+      return Some(path.clone());
+    }
+  }
+
+  None
 }
