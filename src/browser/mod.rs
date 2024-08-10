@@ -214,6 +214,16 @@ lazy_static::lazy_static! {
       mac: vec![PathBuf::from("/Applications/Firefox Nightly.app/Contents/MacOS/firefox")],
     },
     Browser {
+      name: "floorp",
+      kind: BrowserKind::Gecko,
+      win: BrowserWindowsConfig {
+        paths: generate_windows_paths(PathBuf::from("Ablaze Floorp\\floorp.exe")),
+        registry_keys: vec![],
+      },
+      unix: vec!["floorp", "floorp-browser"],
+      mac: vec![PathBuf::from("/Applications/Floorp.app/Contents/MacOS/floorp")],
+    },
+    Browser {
       name: "librewolf",
       kind: BrowserKind::Gecko,
       win: BrowserWindowsConfig {
