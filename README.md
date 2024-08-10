@@ -13,7 +13,7 @@
 
 ## Main features
 
-* \>1MB binary size with no external dependencies (except for the browser of course!)
+* \<1MB binary size with no external dependencies (except for the browser of course!)
 * Multi-platform. Supports Windows, macOS, and Linux.
 * Support for both local and remote websites.
 * Maximizes performance of whatever browser is chosen, and uses an entirely separate browser profile.
