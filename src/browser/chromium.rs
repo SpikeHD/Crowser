@@ -22,7 +22,7 @@ pub fn generate_cli_options(win: &Window) -> Vec<String> {
         format!("--app={}", config.url)
       },
       ContentConfig::Local(config) => {
-        format!("--app=http://localhost:{}", config.port.unwrap())
+        format!("--app=http://localhost:{}", config.port)
       },
     },
 

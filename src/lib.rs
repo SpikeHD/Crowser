@@ -5,11 +5,16 @@ use std::{
 
 use browser::{Browser, BrowserKind};
 use error::CrowserError;
+use include_dir::Dir;
 use shared_child::SharedChild;
 
 pub mod browser;
 mod error;
 mod webserver;
+
+// Re-export the include_dir macro
+pub use include_dir;
+use webserver::{Webserver, WebserverMessage};
 
 #[derive(Debug)]
 pub struct FirefoxConfig {
@@ -29,9 +34,8 @@ pub enum ContentConfig {
 
 #[derive(Debug, Clone)]
 pub struct LocalConfig {
-  pub port_range: (u16, u16),
-  pub directory: PathBuf,
-  port: Option<u16>,
+  pub port: u16,
+  pub directory: Dir<'static>,
 }
 
 #[derive(Debug, Clone)]
@@ -189,6 +193,30 @@ impl Window {
   pub fn create(&mut self) -> Result<(), CrowserError> {
     self.created = true;
 
+    let t_config = self.config.clone();
+    let (w_tx, w_rx) = std::sync::mpsc::channel::<WebserverMessage>();
+    let webserver_thread = std::thread::spawn(move || {
+      match t_config {
+        ContentConfig::Local(config) => {
+          let webserver = Webserver::new(config.port, config.directory);
+          
+          if let Ok(webserver) = webserver {
+            loop {
+              match w_rx.try_recv() {
+                Ok(WebserverMessage::Kill) => {
+                  break;
+                }
+                _ => {}
+              }
+
+              webserver.poll_request();
+            }
+          }
+        }
+        _ => {}
+      }
+    });
+
     // TODO this needs to provide CLI options and crap
     let mut cmd = std::process::Command::new(self.browser.1.clone());
 
@@ -221,11 +249,13 @@ impl Window {
       if terminated.load(std::sync::atomic::Ordering::Relaxed) {
         // Kill the process
         self.process_handle.as_ref().unwrap().kill()?;
+        w_tx.send(WebserverMessage::Kill).unwrap();
         break;
       }
 
       // if the process is dead, break
       if self.process_handle.as_ref().unwrap().try_wait()?.is_some() {
+        w_tx.send(WebserverMessage::Kill).unwrap();
         break;
       }
     }

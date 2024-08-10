@@ -17,7 +17,7 @@ pub fn generate_cli_options(win: &Window) -> Vec<String> {
       options.push(config.url.clone());
     }
     ContentConfig::Local(config) => {
-      options.push(format!("http://localhost:{}", config.port.unwrap()));
+      options.push(format!("http://localhost:{}", config.port));
     }
   }
 

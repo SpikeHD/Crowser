@@ -4,6 +4,7 @@ pub enum CrowserError {
   NoBrowser(String),
   DoAfterCreate(String),
   DoBeforeCreate(String),
+  WebserverError(String),
 }
 
 impl std::error::Error for CrowserError {}
@@ -21,6 +22,7 @@ impl std::fmt::Display for CrowserError {
       CrowserError::NoBrowser(msg) => write!(f, "No browser found: {}", msg),
       CrowserError::DoAfterCreate(msg) => write!(f, "Do after create error: {}", msg),
       CrowserError::DoBeforeCreate(msg) => write!(f, "Do before create error: {}", msg),
+      CrowserError::WebserverError(msg) => write!(f, "Webserver error: {}", msg),
     }
   }
 }
