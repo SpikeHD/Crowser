@@ -116,3 +116,7 @@ profile directory, or both. For example, for Firefox there is a `user.js` file i
 used to control the browser's behavior ([check out this huge list!](https://peter.sh/experiments/chromium-command-line-switches/)).
 
 Regarding IPC, I haven't done it yet, so these docs are still TODO :P
+
+# Contributing
+
+Issues, PRs, etc. are all welcome!
