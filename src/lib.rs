@@ -24,6 +24,8 @@ pub struct Window {
   height: u32,
 
   initialization_script: String,
+
+  disable_hardware_acceleration: bool,
 }
 
 impl Window {
@@ -47,6 +49,8 @@ impl Window {
       height: 600,
 
       initialization_script: "".to_string(),
+
+      disable_hardware_acceleration: false,
     })
   }
 
@@ -67,6 +71,16 @@ impl Window {
     }
 
     self.initialization_script = script.as_ref().to_string();
+
+    Ok(())
+  }
+
+  pub fn disable_hardware_acceleration(&mut self) -> Result<(), CrowserError> {
+    if self.created {
+      return Err(CrowserError::DoAfterCreate("Initialization script will have no effect if window is already created".to_string()));
+    }
+
+    self.disable_hardware_acceleration = true;
 
     Ok(())
   }

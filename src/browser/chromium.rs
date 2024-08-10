@@ -13,5 +13,12 @@ pub fn generate_cli_options(win: &Window) -> Vec<String> {
   // Profile directory
   options.push(format!("--user-data-dir={}", win.profile_directory.to_str().unwrap()));
 
+  // Features to make it work normal
+  options.push("--disable-features=WinRetrieveSuggestionsOnlyOnDemand,HardwareMediaKeyHandling,MediaSessionService".to_string());
+
+  if win.disable_hardware_acceleration {
+    options.push("--disable-gpu".to_string());
+  }
+
   options
 }
