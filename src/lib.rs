@@ -64,7 +64,7 @@ impl IntoContentConfig for RemoteConfig {
 }
 
 /// The main Window, representing a browser window
-/// 
+///
 /// This struct is used to create and manage a browser window.
 /// It contains all configuration, controls, etc. needed to control the window.
 #[derive(Debug)]

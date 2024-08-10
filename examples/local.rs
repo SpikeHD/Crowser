@@ -1,4 +1,4 @@
-use crowser::{include_dir, LocalConfig, Window, error::CrowserError};
+use crowser::{error::CrowserError, include_dir, LocalConfig, Window};
 
 fn main() -> Result<(), CrowserError> {
   let mut profile_dir = std::env::current_dir()?;
