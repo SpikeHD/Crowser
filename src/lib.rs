@@ -8,6 +8,16 @@ pub mod browser;
 mod error;
 
 #[derive(Debug)]
+pub struct FirefoxConfig {
+  custom_css: Option<String>,
+}
+
+#[derive(Debug)]
+pub struct ChromiumConfig {
+  // TODO
+}
+
+#[derive(Debug)]
 pub struct Window {
   created: bool,
 
@@ -24,6 +34,9 @@ pub struct Window {
   initialization_script: String,
 
   disable_hardware_acceleration: bool,
+
+  firefox_config: Option<FirefoxConfig>,
+  chromium_config: Option<ChromiumConfig>,
 }
 
 impl Window {
@@ -50,6 +63,9 @@ impl Window {
       initialization_script: "".to_string(),
 
       disable_hardware_acceleration: false,
+
+      firefox_config: None,
+      chromium_config: None,
     })
   }
 
@@ -80,6 +96,26 @@ impl Window {
     }
 
     self.disable_hardware_acceleration = true;
+
+    Ok(())
+  }
+
+  pub fn set_firefox_config(&mut self, config: FirefoxConfig) -> Result<(), CrowserError> {
+    if self.created {
+      return Err(CrowserError::DoAfterCreate("Initialization script will have no effect if window is already created".to_string()));
+    }
+
+    self.firefox_config = Some(config);
+
+    Ok(())
+  }
+
+  pub fn set_chromium_config(&mut self, config: ChromiumConfig) -> Result<(), CrowserError> {
+    if self.created {
+      return Err(CrowserError::DoAfterCreate("Initialization script will have no effect if window is already created".to_string()));
+    }
+
+    self.chromium_config = Some(config);
 
     Ok(())
   }
