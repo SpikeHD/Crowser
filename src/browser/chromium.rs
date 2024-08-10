@@ -27,7 +27,11 @@ pub fn generate_cli_options(win: &Window) -> Vec<String> {
     },
 
     // Profile
-    format!("--user-data-dir={}", win.profile_directory.to_str().unwrap())
+    if let Some(profile) = &win.profile_directory.to_str() {
+      format!("--user-data-dir={}", profile)
+    } else {
+      "".to_string()
+    },
   ]);
 
   if win.disable_hardware_acceleration {

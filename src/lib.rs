@@ -209,7 +209,13 @@ impl Window {
                 _ => {}
               }
 
-              webserver.poll_request();
+              match webserver.poll_request() {
+                Ok(_) => {}
+                Err(err) => {
+                  eprintln!("Webserver error: {}", err);
+                  break;
+                }
+              };
             }
           }
         }
@@ -248,16 +254,23 @@ impl Window {
 
       if terminated.load(std::sync::atomic::Ordering::Relaxed) {
         // Kill the process
-        self.process_handle.as_ref().unwrap().kill()?;
-        w_tx.send(WebserverMessage::Kill).unwrap();
-        webserver_thread.join().unwrap();
+        if let Some(child) = self.process_handle.as_ref() {
+          child.kill()?;
+        }
+
+        w_tx.send(WebserverMessage::Kill)?;
+        webserver_thread.join()?;
         break;
       }
 
       // if the process is dead, break
-      if self.process_handle.as_ref().unwrap().try_wait()?.is_some() {
-        w_tx.send(WebserverMessage::Kill).unwrap();
-        webserver_thread.join().unwrap();
+      if let Some(child) = self.process_handle.as_ref() {
+        if child.try_wait()?.is_some() {
+          w_tx.send(WebserverMessage::Kill)?;
+          webserver_thread.join()?;
+          break;
+        }
+      } else {
         break;
       }
     }
@@ -272,7 +285,9 @@ impl Window {
       ));
     }
 
-    self.process_handle.as_ref().unwrap().kill()?;
+    if let Some(child) = self.process_handle.as_ref() {
+      child.kill()?;
+    }
 
     Ok(())
   }

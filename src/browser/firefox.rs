@@ -22,8 +22,10 @@ pub fn generate_cli_options(win: &Window) -> Vec<String> {
   }
 
   // Profile directory
-  options.push("--profile".to_string());
-  options.push(win.profile_directory.to_str().unwrap().to_string());
+  if let Some(profile) = &win.profile_directory.to_str() {
+    options.push("--profile".to_string());
+    options.push(profile.to_string());
+  }
 
   options
 }

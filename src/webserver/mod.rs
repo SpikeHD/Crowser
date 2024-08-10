@@ -27,7 +27,7 @@ impl Webserver {
     })
   }
 
-  pub fn poll_request(&self) {
+  pub fn poll_request(&self) -> Result<(), CrowserError> {
     if let Ok(Some(request)) = self.server.try_recv() {
       let mut path = request.url().strip_prefix('/').unwrap_or(request.url());
 
@@ -42,23 +42,27 @@ impl Webserver {
         request.respond(
           Response::empty(404)
         ).unwrap_or_default();
-        return;
+        
+        return Ok(());
       }
 
+      // Safe to unwrap, we just checked
       let file = file.unwrap();
       let contents = file.contents_utf8().unwrap();
       let mime = mime_guess::from_path(file.path()).first_or_octet_stream();
       let mut res = Response::from_string(contents);
 
       // Headers
-      let content_type = Header::from_str(format!("Content-Type: {}", mime).as_str()).unwrap();
+      let content_type = Header::from_str(format!("Content-Type: {}", mime).as_str())?;
       let content_length =
-        Header::from_str(format!("Content-Length: {}", contents.len()).as_str()).unwrap();
+        Header::from_str(format!("Content-Length: {}", contents.len()).as_str())?;
 
       res.add_header(content_type);
       res.add_header(content_length);
 
       request.respond(res).unwrap_or_default();
     }
+
+    Ok(())
   }
 }
