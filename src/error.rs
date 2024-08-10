@@ -8,7 +8,7 @@ pub enum CrowserError {
 
 impl std::error::Error for CrowserError {}
 
-impl From <std::io::Error> for CrowserError {
+impl From<std::io::Error> for CrowserError {
   fn from(err: std::io::Error) -> Self {
     CrowserError::IoError(err)
   }

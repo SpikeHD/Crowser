@@ -1,4 +1,7 @@
-use std::{path::PathBuf, sync::{atomic::AtomicBool, Arc}};
+use std::{
+  path::PathBuf,
+  sync::{atomic::AtomicBool, Arc},
+};
 
 use browser::{Browser, BrowserKind};
 use error::CrowserError;
@@ -78,10 +81,18 @@ pub struct Window {
 
 impl Window {
   /// Create a new window with the specified browser engine (if any) and profile directory.
-  pub fn new(config: impl IntoContentConfig, engine: Option<BrowserKind>, profile_directory: PathBuf) -> Result<Self, CrowserError> {
+  pub fn new(
+    config: impl IntoContentConfig,
+    engine: Option<BrowserKind>,
+    profile_directory: PathBuf,
+  ) -> Result<Self, CrowserError> {
     let browser = match browser::get_best_browser(engine) {
       Some(browser) => browser,
-      None => return Err(CrowserError::NoBrowser("No compatible browsers on system!".to_string())),
+      None => {
+        return Err(CrowserError::NoBrowser(
+          "No compatible browsers on system!".to_string(),
+        ))
+      }
     };
 
     Ok(Self {
@@ -110,8 +121,12 @@ impl Window {
     match &mut self.config {
       ContentConfig::Remote(remote) => {
         remote.url = url.as_ref().to_string();
-      },
-      _ => return Err(CrowserError::DoAfterCreate("Cannot set URL after window is created".to_string())),
+      }
+      _ => {
+        return Err(CrowserError::DoAfterCreate(
+          "Cannot set URL after window is created".to_string(),
+        ))
+      }
     }
 
     // TODO If we are already created, we need to send the signal to the window to change the URL
@@ -125,7 +140,9 @@ impl Window {
 
   pub fn set_initialization_script(&mut self, script: impl AsRef<str>) -> Result<(), CrowserError> {
     if self.created {
-      return Err(CrowserError::DoAfterCreate("Initialization script will have no effect if window is already created".to_string()));
+      return Err(CrowserError::DoAfterCreate(
+        "Initialization script will have no effect if window is already created".to_string(),
+      ));
     }
 
     self.initialization_script = script.as_ref().to_string();
@@ -135,7 +152,9 @@ impl Window {
 
   pub fn disable_hardware_acceleration(&mut self) -> Result<(), CrowserError> {
     if self.created {
-      return Err(CrowserError::DoAfterCreate("Initialization script will have no effect if window is already created".to_string()));
+      return Err(CrowserError::DoAfterCreate(
+        "Initialization script will have no effect if window is already created".to_string(),
+      ));
     }
 
     self.disable_hardware_acceleration = true;
@@ -145,7 +164,9 @@ impl Window {
 
   pub fn set_firefox_config(&mut self, config: FirefoxConfig) -> Result<(), CrowserError> {
     if self.created {
-      return Err(CrowserError::DoAfterCreate("Initialization script will have no effect if window is already created".to_string()));
+      return Err(CrowserError::DoAfterCreate(
+        "Initialization script will have no effect if window is already created".to_string(),
+      ));
     }
 
     self.firefox_config = Some(config);
@@ -155,7 +176,9 @@ impl Window {
 
   pub fn set_chromium_config(&mut self, config: ChromiumConfig) -> Result<(), CrowserError> {
     if self.created {
-      return Err(CrowserError::DoAfterCreate("Initialization script will have no effect if window is already created".to_string()));
+      return Err(CrowserError::DoAfterCreate(
+        "Initialization script will have no effect if window is already created".to_string(),
+      ));
     }
 
     self.chromium_config = Some(config);
@@ -169,21 +192,16 @@ impl Window {
     // TODO this needs to provide CLI options and crap
     let mut cmd = std::process::Command::new(self.browser.1.clone());
 
-    cmd.args(
-      match self.browser.0.kind {
-        BrowserKind::Chromium => browser::chromium::generate_cli_options(self),
-        BrowserKind::Gecko => browser::firefox::generate_cli_options(self),
-        _ => {
-          vec![]
-        },
+    cmd.args(match self.browser.0.kind {
+      BrowserKind::Chromium => browser::chromium::generate_cli_options(self),
+      BrowserKind::Gecko => browser::firefox::generate_cli_options(self),
+      _ => {
+        vec![]
       }
-    );
+    });
 
-    match self.browser.0.kind {
-      BrowserKind::Gecko => {
-        browser::firefox::write_extra_profile_files(self)?;
-      },
-      _ => {},
+    if self.browser.0.kind == BrowserKind::Gecko {
+      browser::firefox::write_extra_profile_files(self)?;
     }
 
     let process = cmd.spawn()?;
@@ -217,7 +235,9 @@ impl Window {
 
   pub fn kill(&mut self) -> Result<(), CrowserError> {
     if !self.created {
-      return Err(CrowserError::DoBeforeCreate("Cannot kill window before it is created".to_string()));
+      return Err(CrowserError::DoBeforeCreate(
+        "Cannot kill window before it is created".to_string(),
+      ));
     }
 
     self.process_handle.as_ref().unwrap().kill()?;
@@ -227,12 +247,13 @@ impl Window {
 
   pub fn clear_profile(&mut self) -> Result<(), CrowserError> {
     if self.created {
-      return Err(CrowserError::DoAfterCreate("Cannot reset profile after window is created".to_string()));
+      return Err(CrowserError::DoAfterCreate(
+        "Cannot reset profile after window is created".to_string(),
+      ));
     }
-    
+
     std::fs::remove_dir_all(&self.profile_directory)?;
 
     Ok(())
   }
 }
-

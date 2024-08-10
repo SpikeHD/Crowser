@@ -12,5 +12,8 @@ pub fn main() {
   });
 
   println!("Best browser on system:");
-  println!("{:?} ({:?}, located at {:?})", best.0.name, best.0.kind, best.1);
+  println!(
+    "{:?} ({:?}, located at {:?})",
+    best.0.name, best.0.kind, best.1
+  );
 }

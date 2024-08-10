@@ -40,7 +40,7 @@ pub struct Browser {
   pub unix: Vec<&'static str>,
 
   /// Contains possible paths for the browser
-  pub mac: Vec<PathBuf>
+  pub mac: Vec<PathBuf>,
 }
 
 lazy_static::lazy_static! {
@@ -262,16 +262,10 @@ pub fn get_best_browser(kind: Option<BrowserKind>) -> Option<(Browser, PathBuf)>
   for (browser, path) in browsers {
     if let Some(k) = kind {
       if browser.kind == k {
-        return Some((
-          browser,
-          path
-        ));
+        return Some((browser, path));
       }
     } else {
-      return Some((
-        browser,
-        path
-      ));
+      return Some((browser, path));
     }
   }
 
@@ -280,7 +274,7 @@ pub fn get_best_browser(kind: Option<BrowserKind>) -> Option<(Browser, PathBuf)>
 
 pub fn get_all_existing_browsers() -> Vec<(Browser, PathBuf)> {
   let mut valid: Vec<(Browser, PathBuf)> = vec![];
-  
+
   // Now look for the first browser that actually exists on the system
   #[cfg(target_os = "windows")]
   for browser in BROWSERS.iter() {
