@@ -8,5 +8,7 @@ fn main() {
   let mut win = Window::new(Some(BrowserKind::Gecko), profile_dir).unwrap();
   win.set_url("https://example.com/");
 
+  win.clear_profile().unwrap();
+
   win.create().unwrap();
 }

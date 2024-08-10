@@ -3,6 +3,7 @@ pub enum CrowserError {
   IoError(std::io::Error),
   NoBrowser(String),
   DoAfterCreate(String),
+  DoBeforeCreate(String),
 }
 
 impl std::error::Error for CrowserError {}
@@ -19,6 +20,7 @@ impl std::fmt::Display for CrowserError {
       CrowserError::IoError(err) => write!(f, "IO Error: {}", err),
       CrowserError::NoBrowser(msg) => write!(f, "No browser found: {}", msg),
       CrowserError::DoAfterCreate(msg) => write!(f, "Do after create error: {}", msg),
+      CrowserError::DoBeforeCreate(msg) => write!(f, "Do before create error: {}", msg),
     }
   }
 }

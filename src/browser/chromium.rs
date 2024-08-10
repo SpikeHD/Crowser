@@ -8,13 +8,20 @@ pub fn generate_cli_options(win: &Window) -> Vec<String> {
   let mut options = vec![];
 
   // Basic
-  options.push(format!("--app={}", win.url));
+  options.extend([
+    "--disable-translate".to_string(),
+    "--disable-popup-blocking".to_string(),
+    "--disable-sync".to_string(),
+    "--no-first-run".to_string(),
+    "--no-default-browser-check".to_string(),
+    "--disable-features=AutofillServerCommunication,WinRetrieveSuggestionsOnlyOnDemand,MediaSessionService,HardwareMediaKeyHandling".to_string(),
+    // Configurable stuff
+    format!("--window-size={},{}", win.width, win.height),
+    format!("--app={}", win.url),
 
-  // Profile directory
-  options.push(format!("--user-data-dir={}", win.profile_directory.to_str().unwrap()));
-
-  // Features to make it work normal
-  options.push("--disable-features=WinRetrieveSuggestionsOnlyOnDemand,HardwareMediaKeyHandling,MediaSessionService".to_string());
+    // Profile
+    format!("--user-data-dir={}", win.profile_directory.to_str().unwrap())
+  ]);
 
   if win.disable_hardware_acceleration {
     options.push("--disable-gpu".to_string());

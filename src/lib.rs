@@ -7,8 +7,6 @@ use shared_child::SharedChild;
 pub mod browser;
 mod error;
 
-// Browser-specific modules
-
 #[derive(Debug)]
 pub struct Window {
   created: bool,
@@ -29,6 +27,7 @@ pub struct Window {
 }
 
 impl Window {
+  /// Create a new window with the specified browser engine (if any) and profile directory.
   pub fn new(engine: Option<BrowserKind>, profile_directory: PathBuf) -> Result<Self, CrowserError> {
     let browser = match browser::get_best_browser(engine) {
       Some(browser) => browser,
@@ -101,11 +100,17 @@ impl Window {
       }
     );
 
+    match self.browser.0.kind {
+      BrowserKind::Gecko => {
+        browser::firefox::write_extra_profile_files(self)?;
+      },
+      _ => {},
+    }
+
     let process = cmd.spawn()?;
+    let terminated = Arc::new(AtomicBool::new(false));
 
     self.process_handle = Some(SharedChild::new(process)?);
-
-    let terminated = Arc::new(AtomicBool::new(false));
 
     for signal in &[signal_hook::consts::SIGINT, signal_hook::consts::SIGTERM] {
       let terminated = terminated.clone();
@@ -127,6 +132,26 @@ impl Window {
         break;
       }
     }
+
+    Ok(())
+  }
+
+  pub fn kill(&mut self) -> Result<(), CrowserError> {
+    if !self.created {
+      return Err(CrowserError::DoBeforeCreate("Cannot kill window before it is created".to_string()));
+    }
+
+    self.process_handle.as_ref().unwrap().kill()?;
+
+    Ok(())
+  }
+
+  pub fn clear_profile(&mut self) -> Result<(), CrowserError> {
+    if self.created {
+      return Err(CrowserError::DoAfterCreate("Cannot reset profile after window is created".to_string()));
+    }
+    
+    std::fs::remove_dir_all(&self.profile_directory)?;
 
     Ok(())
   }
