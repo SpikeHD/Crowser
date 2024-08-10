@@ -24,7 +24,7 @@ shared_child = "1.0.1"
 signal-hook = "0.3.17"
 tiny_http = "0.12.0"
 
-[target.'cfg(linux)'.dependencies]
+[target.'cfg(target_os = "linux")'.dependencies]
 which = "6.0.2"
 
 [build-dependencies]
