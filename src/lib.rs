@@ -5,7 +5,6 @@ use error::CrowserError;
 
 pub mod browser;
 mod error;
-mod vectrait;
 
 // Browser-specific modules
 
