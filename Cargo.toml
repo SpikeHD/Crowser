@@ -1,8 +1,15 @@
 [package]
 name = "crowser"
+description = "Create desktop apps using user-installed browsers"
+homepage = "https://github.com/SpikeHD/Crowser"
+repository = "https://github.com/SpikeHD/Crowser"
+keywords = [ "browser", "desktop", "app", "webview", "web", "view", "crowser" ]
+categories = [ "gui", "web-programming" ]
+
 version = "0.1.0"
 edition = "2021"
 rust-version = "1.70.0"
+license = "MIT"
 
 # This is a library
 [lib]
