@@ -35,7 +35,7 @@ All browser support comes with a few small caveats. You may notice small inconsi
 * Librewolf
 * Waterfox
 
-> [!NOTE]
+> [!TIP]
 > Not seeing your favorite browser? Feel free to submit an issue!
 >
 > If you have some programming/Rust experience, it's trivial to add new browsers to the [supported list](./src/browser/mod.rs).
