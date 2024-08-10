@@ -1,16 +1,18 @@
-use crowser::{RemoteConfig, Window};
+use crowser::{error::CrowserError, RemoteConfig, Window};
 
-fn main() {
-  let mut profile_dir = std::env::current_dir().unwrap();
+fn main() -> Result<(), CrowserError> {
+  let mut profile_dir = std::env::current_dir()?;
   profile_dir.push("example_profiles");
 
   let config = RemoteConfig {
     url: "https://example.com".to_string(),
   };
 
-  let mut window = Window::new(config, None, profile_dir).unwrap();
+  let mut window = Window::new(config, None, profile_dir)?;
 
-  window.clear_profile().unwrap();
+  window.clear_profile()?;
 
-  window.create().unwrap();
+  window.create()?;
+
+  Ok(())
 }

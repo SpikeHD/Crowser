@@ -9,7 +9,7 @@ use include_dir::Dir;
 use shared_child::SharedChild;
 
 pub mod browser;
-mod error;
+pub mod error;
 mod webserver;
 
 // Re-export the include_dir macro

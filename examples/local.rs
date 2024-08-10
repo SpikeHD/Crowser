@@ -1,7 +1,7 @@
-use crowser::{include_dir, LocalConfig, Window};
+use crowser::{include_dir, LocalConfig, Window, error::CrowserError};
 
-fn main() {
-  let mut profile_dir = std::env::current_dir().unwrap();
+fn main() -> Result<(), CrowserError> {
+  let mut profile_dir = std::env::current_dir()?;
   profile_dir.push("example_profiles");
 
   let dir = include_dir::include_dir!("$CARGO_MANIFEST_DIR/examples/local");
@@ -12,9 +12,9 @@ fn main() {
       directory: dir.clone(),
     };
 
-    let mut window = Window::new(config, None, profile_dir.clone()).unwrap();
+    let mut window = Window::new(config, None, profile_dir.clone())?;
 
-    window.clear_profile().unwrap();
+    window.clear_profile()?;
 
     match window.create() {
       Ok(_) => {
@@ -26,4 +26,6 @@ fn main() {
       }
     }
   }
+
+  Ok(())
 }

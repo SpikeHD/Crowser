@@ -1,7 +1,7 @@
-use crowser::{browser::BrowserKind, RemoteConfig, Window};
+use crowser::{browser::BrowserKind, error::CrowserError, RemoteConfig, Window};
 
-fn main() {
-  let mut profile_dir = std::env::current_dir().unwrap();
+fn main() -> Result<(), CrowserError> {
+  let mut profile_dir = std::env::current_dir()?;
   profile_dir.push("example_profiles");
 
   let config = RemoteConfig {
@@ -9,9 +9,11 @@ fn main() {
   };
 
   // Specify Firefox-based browsers
-  let mut win = Window::new(config, Some(BrowserKind::Gecko), profile_dir).unwrap();
+  let mut win = Window::new(config, Some(BrowserKind::Gecko), profile_dir)?;
 
-  win.clear_profile().unwrap();
+  win.clear_profile()?;
 
-  win.create().unwrap();
+  win.create()?;
+
+  Ok(())
 }
