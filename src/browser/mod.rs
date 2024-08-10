@@ -243,6 +243,16 @@ lazy_static::lazy_static! {
       unix: vec!["waterfox", "waterfox-browser"],
       mac: vec![PathBuf::from("/Applications/Waterfox.app/Contents/MacOS/waterfox")],
     },
+    Browser {
+      name: "mercury",
+      kind: BrowserKind::Gecko,
+      win: BrowserWindowsConfig {
+        paths: generate_windows_paths(PathBuf::from("Mercury\\mercury.exe")),
+        registry_keys: vec![],
+      },
+      unix: vec!["mercury", "mercury-browser"],
+      mac: vec![PathBuf::from("/Applications/Mercury.app/Contents/MacOS/mercury")],
+    }
   ];
 }
 
