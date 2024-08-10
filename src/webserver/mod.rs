@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use include_dir::Dir;
 use tiny_http::{Header, Response, Server};
 
@@ -27,9 +29,36 @@ impl Webserver {
 
   pub fn poll_request(&self) {
     if let Ok(Some(request)) = self.server.try_recv() {
-      let response = Response::from_string("Hello, world!".to_string())
-        .with_header(Header::from_bytes(&b"Content-Type"[..], &b"text/plain"[..]).unwrap());
-      request.respond(response).unwrap();
+      let mut path = request.url().strip_prefix('/').unwrap_or(request.url());
+
+      // If the path is empty, we should serve the index.html file
+      if path.is_empty() {
+        path = "index.html";
+      }
+
+      let file = self.directory.get_file(path);
+
+      if file.is_none() {
+        request.respond(
+          Response::empty(404)
+        ).unwrap_or_default();
+        return;
+      }
+
+      let file = file.unwrap();
+      let contents = file.contents_utf8().unwrap();
+      let mime = mime_guess::from_path(file.path()).first_or_octet_stream();
+      let mut res = Response::from_string(contents);
+
+      // Headers
+      let content_type = Header::from_str(format!("Content-Type: {}", mime).as_str()).unwrap();
+      let content_length =
+        Header::from_str(format!("Content-Length: {}", contents.len()).as_str()).unwrap();
+
+      res.add_header(content_type);
+      res.add_header(content_length);
+
+      request.respond(res).unwrap_or_default();
     }
   }
 }
