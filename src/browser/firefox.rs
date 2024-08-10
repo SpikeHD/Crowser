@@ -1,4 +1,4 @@
-use crate::Window;
+use crate::{ContentConfig, Window};
 
 /// Generate command line options required to make Firefox-based browsers
 /// look like a standalone app.
@@ -11,7 +11,15 @@ pub fn generate_cli_options(win: &Window) -> Vec<String> {
   options.push("--new-window".to_string());
 
   options.push("--url".to_string());
-  options.push(win.url.clone());
+
+  match &win.config {
+    ContentConfig::Remote(config) => {
+      options.push(config.url.clone());
+    },
+    ContentConfig::Local(config) => {
+      options.push(format!("http://localhost:{}", config.port.unwrap()));
+    }
+  }
 
   // Profile directory
   options.push("--profile".to_string());

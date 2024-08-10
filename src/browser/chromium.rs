@@ -1,4 +1,4 @@
-use crate::Window;
+use crate::{ContentConfig, Window};
 
 /// Generate command line options required to make Chromium-based browsers
 /// look like a standalone app.
@@ -17,7 +17,14 @@ pub fn generate_cli_options(win: &Window) -> Vec<String> {
     "--disable-features=AutofillServerCommunication,WinRetrieveSuggestionsOnlyOnDemand,MediaSessionService,HardwareMediaKeyHandling".to_string(),
     // Configurable stuff
     format!("--window-size={},{}", win.width, win.height),
-    format!("--app={}", win.url),
+    match &win.config {
+      ContentConfig::Remote(config) => {
+        format!("--app={}", config.url)
+      },
+      ContentConfig::Local(config) => {
+        format!("--app=http://localhost:{}", config.port.unwrap())
+      },
+    },
 
     // Profile
     format!("--user-data-dir={}", win.profile_directory.to_str().unwrap())

@@ -6,6 +6,7 @@ use shared_child::SharedChild;
 
 pub mod browser;
 mod error;
+mod webserver;
 
 #[derive(Debug)]
 pub struct FirefoxConfig {
@@ -17,11 +18,47 @@ pub struct ChromiumConfig {
   // TODO
 }
 
+#[derive(Debug, Clone)]
+pub enum ContentConfig {
+  Local(LocalConfig),
+  Remote(RemoteConfig),
+}
+
+#[derive(Debug, Clone)]
+pub struct LocalConfig {
+  pub port_range: (u16, u16),
+  pub directory: PathBuf,
+  port: Option<u16>,
+}
+
+#[derive(Debug, Clone)]
+pub struct RemoteConfig {
+  pub url: String,
+}
+
+// Create a trait so the Window::new() can just be provided a LocalConfig or RemoteConfig
+// and it will automatically create the correct ContentConfig
+pub trait IntoContentConfig {
+  fn into_content_config(self) -> ContentConfig;
+}
+
+impl IntoContentConfig for LocalConfig {
+  fn into_content_config(self) -> ContentConfig {
+    ContentConfig::Local(self)
+  }
+}
+
+impl IntoContentConfig for RemoteConfig {
+  fn into_content_config(self) -> ContentConfig {
+    ContentConfig::Remote(self)
+  }
+}
+
 #[derive(Debug)]
 pub struct Window {
   created: bool,
 
-  url: String,
+  config: ContentConfig,
   browser: (Browser, PathBuf),
 
   profile_directory: PathBuf,
@@ -41,7 +78,7 @@ pub struct Window {
 
 impl Window {
   /// Create a new window with the specified browser engine (if any) and profile directory.
-  pub fn new(engine: Option<BrowserKind>, profile_directory: PathBuf) -> Result<Self, CrowserError> {
+  pub fn new(config: impl IntoContentConfig, engine: Option<BrowserKind>, profile_directory: PathBuf) -> Result<Self, CrowserError> {
     let browser = match browser::get_best_browser(engine) {
       Some(browser) => browser,
       None => return Err(CrowserError::NoBrowser("No compatible browsers on system!".to_string())),
@@ -54,7 +91,7 @@ impl Window {
 
       created: false,
 
-      url: String::from(""),
+      config: config.into_content_config(),
       browser,
 
       width: 800,
@@ -69,10 +106,16 @@ impl Window {
     })
   }
 
-  pub fn set_url(&mut self, url: impl AsRef<str>) {
-    self.url = url.as_ref().to_string();
+  pub fn set_url(&mut self, url: impl AsRef<str>) -> Result<(), CrowserError> {
+    match &mut self.config {
+      ContentConfig::Remote(remote) => {
+        remote.url = url.as_ref().to_string();
+      },
+      _ => return Err(CrowserError::DoAfterCreate("Cannot set URL after window is created".to_string())),
+    }
 
     // TODO If we are already created, we need to send the signal to the window to change the URL
+    Ok(())
   }
 
   pub fn set_size(&mut self, width: u32, height: u32) {
