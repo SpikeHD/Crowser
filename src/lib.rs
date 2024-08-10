@@ -14,7 +14,6 @@ pub struct Window {
   created: bool,
 
   app_name: String,
-  title: String,
   url: String,
   browser: (Browser, PathBuf),
 
@@ -43,7 +42,6 @@ impl Window {
 
       created: false,
 
-      title: String::from(""),
       url: String::from(""),
       browser,
 
@@ -52,10 +50,6 @@ impl Window {
 
       initialization_script: "".to_string(),
     })
-  }
-
-  pub fn set_title(&mut self, title: impl AsRef<str>) {
-    self.title = title.as_ref().to_string();
   }
 
   pub fn set_url(&mut self, url: impl AsRef<str>) {
@@ -91,17 +85,27 @@ impl Window {
     self.created = true;
 
     // TODO this needs to provide CLI options and crap
-    let process = std::process::Command::new(self.browser.1.clone())
-      .arg(self.url.clone())
-      .spawn()?;
+    let mut cmd = std::process::Command::new(self.browser.1.clone());
+
+    cmd.args(
+      match self.browser.0.kind {
+        BrowserKind::Chromium => browser::chromium::generate_cli_options(self),
+        BrowserKind::Gecko => browser::firefox::generate_cli_options(self),
+        _ => {
+          vec![]
+        },
+      }
+    );
+
+    let process = cmd.spawn()?;
 
     self.process_handle = Some(SharedChild::new(process)?);
 
     let terminated = Arc::new(AtomicBool::new(false));
 
-    for signale in &[signal_hook::consts::SIGINT, signal_hook::consts::SIGTERM] {
+    for signal in &[signal_hook::consts::SIGINT, signal_hook::consts::SIGTERM] {
       let terminated = terminated.clone();
-      signal_hook::flag::register(*signale, terminated)?;
+      signal_hook::flag::register(*signal, terminated)?;
     }
 
     // TODO create like an event handler and stuff
@@ -111,6 +115,11 @@ impl Window {
       if terminated.load(std::sync::atomic::Ordering::Relaxed) {
         // Kill the process
         self.process_handle.as_ref().unwrap().kill()?;
+        break;
+      }
+
+      // if the process is dead, break
+      if self.process_handle.as_ref().unwrap().try_wait()?.is_some() {
         break;
       }
     }

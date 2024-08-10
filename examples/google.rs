@@ -6,7 +6,6 @@ fn main() {
 
   let mut window = Window::new("Google Example".to_string(), None, profile_dir).unwrap();
   window.set_url("https://google.com");
-  window.set_title("Google");
 
   window.create().unwrap();
 }
