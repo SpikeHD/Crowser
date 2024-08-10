@@ -13,7 +13,6 @@ mod error;
 pub struct Window {
   created: bool,
 
-  app_name: String,
   url: String,
   browser: (Browser, PathBuf),
 
@@ -28,14 +27,13 @@ pub struct Window {
 }
 
 impl Window {
-  pub fn new(app_name: String, engine: Option<BrowserKind>, profile_directory: PathBuf) -> Result<Self, CrowserError> {
+  pub fn new(engine: Option<BrowserKind>, profile_directory: PathBuf) -> Result<Self, CrowserError> {
     let browser = match browser::get_best_browser(engine) {
       Some(browser) => browser,
       None => return Err(CrowserError::NoBrowser("No compatible browsers on system!".to_string())),
     };
 
     Ok(Self {
-      app_name,
       profile_directory,
 
       process_handle: None,
@@ -74,14 +72,6 @@ impl Window {
   }
 
   pub fn create(&mut self) -> Result<(), CrowserError> {
-    match self.browser.0.kind {
-      BrowserKind::Chromium => browser::chromium::write_profile(self.app_name.clone(), self.profile_directory.clone(), self.initialization_script.clone()),
-      BrowserKind::Gecko => browser::firefox::write_profile(self.app_name.clone(), self.profile_directory.clone(), self.initialization_script.clone()),
-      _ => {
-        return Err(CrowserError::NoBrowser(format!("Browser engine {:?} not supported", self.browser)));
-      },
-    }?;
-
     self.created = true;
 
     // TODO this needs to provide CLI options and crap

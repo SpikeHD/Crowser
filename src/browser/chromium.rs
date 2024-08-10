@@ -1,14 +1,5 @@
-use std::{fs, path::PathBuf};
-
 use crate::Window;
 
-pub fn write_profile(app_name: String, profile_directory: PathBuf, initialization_script: String) -> Result<(), std::io::Error> {
-  if !profile_directory.exists() {
-    fs::create_dir_all(&profile_directory)?;
-  }
-
-  Ok(())
-}
 /// Generate command line options required to make Chromium-based browsers
 /// look like a standalone app.
 /// 
@@ -16,8 +7,11 @@ pub fn write_profile(app_name: String, profile_directory: PathBuf, initializatio
 pub fn generate_cli_options(win: &Window) -> Vec<String> {
   let mut options = vec![];
 
-  options.push("--app".to_string());
-  options.push(win.url.clone());
+  // Basic
+  options.push(format!("--app={}", win.url));
+
+  // Profile directory
+  options.push(format!("--user-data-dir={}", win.profile_directory.to_str().unwrap()));
 
   options
 }
