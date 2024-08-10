@@ -1,13 +1,10 @@
-use std::path::PathBuf;
-
-use crowser::{LocalConfig, RemoteConfig, Window};
-use include_dir::include_dir;
+use crowser::{include_dir, LocalConfig, Window};
 
 fn main() {
   let mut profile_dir = std::env::current_dir().unwrap();
   profile_dir.push("example_profiles");
 
-  let dir = include_dir!("$CARGO_MANIFEST_DIR/examples/local");
+  let dir = include_dir::include_dir!("$CARGO_MANIFEST_DIR/examples/local");
 
   for port in 8000..8050 {
     let config = LocalConfig {

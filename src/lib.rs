@@ -250,12 +250,14 @@ impl Window {
         // Kill the process
         self.process_handle.as_ref().unwrap().kill()?;
         w_tx.send(WebserverMessage::Kill).unwrap();
+        webserver_thread.join().unwrap();
         break;
       }
 
       // if the process is dead, break
       if self.process_handle.as_ref().unwrap().try_wait()?.is_some() {
         w_tx.send(WebserverMessage::Kill).unwrap();
+        webserver_thread.join().unwrap();
         break;
       }
     }
