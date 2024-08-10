@@ -196,30 +196,24 @@ impl Window {
     let t_config = self.config.clone();
     let (w_tx, w_rx) = std::sync::mpsc::channel::<WebserverMessage>();
     let webserver_thread = std::thread::spawn(move || {
-      match t_config {
-        ContentConfig::Local(config) => {
-          let webserver = Webserver::new(config.port, config.directory);
-          
-          if let Ok(webserver) = webserver {
-            loop {
-              match w_rx.try_recv() {
-                Ok(WebserverMessage::Kill) => {
-                  break;
-                }
-                _ => {}
-              }
+      if let ContentConfig::Local(config) = t_config {
+        let webserver = Webserver::new(config.port, config.directory);
 
-              match webserver.poll_request() {
-                Ok(_) => {}
-                Err(err) => {
-                  eprintln!("Webserver error: {}", err);
-                  break;
-                }
-              };
+        if let Ok(webserver) = webserver {
+          loop {
+            if let Ok(WebserverMessage::Kill) = w_rx.try_recv() {
+              break;
             }
+
+            match webserver.poll_request() {
+              Ok(_) => {}
+              Err(err) => {
+                eprintln!("Webserver error: {}", err);
+                break;
+              }
+            };
           }
         }
-        _ => {}
       }
     });
 

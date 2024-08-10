@@ -18,13 +18,15 @@ impl Webserver {
   pub fn new(port: u16, directory: Dir<'static>) -> Result<Self, CrowserError> {
     let server = match Server::http(format!("127.0.0.1:{}", port)) {
       Ok(server) => server,
-      Err(err) => return Err(CrowserError::WebserverError(format!("Failed to bind to port {}: {}", port, err))),
+      Err(err) => {
+        return Err(CrowserError::WebserverError(format!(
+          "Failed to bind to port {}: {}",
+          port, err
+        )))
+      }
     };
 
-    Ok(Self {
-      server,
-      directory,
-    })
+    Ok(Self { server, directory })
   }
 
   pub fn poll_request(&self) -> Result<(), CrowserError> {
@@ -39,10 +41,8 @@ impl Webserver {
       let file = self.directory.get_file(path);
 
       if file.is_none() {
-        request.respond(
-          Response::empty(404)
-        ).unwrap_or_default();
-        
+        request.respond(Response::empty(404)).unwrap_or_default();
+
         return Ok(());
       }
 

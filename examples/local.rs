@@ -8,7 +8,7 @@ fn main() {
 
   for port in 8000..8050 {
     let config = LocalConfig {
-      port: port,
+      port,
       directory: dir.clone(),
     };
 
