@@ -1,7 +1,8 @@
-use std::path::PathBuf;
+use std::{path::PathBuf, sync::{atomic::AtomicBool, Arc}};
 
 use browser::{Browser, BrowserKind};
 use error::CrowserError;
+use shared_child::SharedChild;
 
 pub mod browser;
 mod error;
@@ -18,6 +19,7 @@ pub struct Window {
   browser: (Browser, PathBuf),
 
   profile_directory: PathBuf,
+  process_handle: Option<SharedChild>,
 
   // Window properties
   width: u32,
@@ -37,6 +39,8 @@ impl Window {
       app_name,
       profile_directory,
 
+      process_handle: None,
+
       created: false,
 
       title: String::from(""),
@@ -50,12 +54,12 @@ impl Window {
     })
   }
 
-  pub fn set_title(&mut self, title: &str) {
-    self.title = title.to_string();
+  pub fn set_title(&mut self, title: impl AsRef<str>) {
+    self.title = title.as_ref().to_string();
   }
 
-  pub fn set_url(&mut self, url: &str) {
-    self.url = url.to_string();
+  pub fn set_url(&mut self, url: impl AsRef<str>) {
+    self.url = url.as_ref().to_string();
 
     // TODO If we are already created, we need to send the signal to the window to change the URL
   }
@@ -65,12 +69,12 @@ impl Window {
     self.height = height;
   }
 
-  pub fn set_initialization_script(&mut self, script: &str) -> Result<(), CrowserError> {
+  pub fn set_initialization_script(&mut self, script: impl AsRef<str>) -> Result<(), CrowserError> {
     if self.created {
       return Err(CrowserError::DoAfterCreate("Initialization script will have no effect if window is already created".to_string()));
     }
 
-    self.initialization_script = script.to_string();
+    self.initialization_script = script.as_ref().to_string();
 
     Ok(())
   }
@@ -85,6 +89,31 @@ impl Window {
     }?;
 
     self.created = true;
+
+    // TODO this needs to provide CLI options and crap
+    let process = std::process::Command::new(self.browser.1.clone())
+      .arg(self.url.clone())
+      .spawn()?;
+
+    self.process_handle = Some(SharedChild::new(process)?);
+
+    let terminated = Arc::new(AtomicBool::new(false));
+
+    for signale in &[signal_hook::consts::SIGINT, signal_hook::consts::SIGTERM] {
+      let terminated = terminated.clone();
+      signal_hook::flag::register(*signale, terminated)?;
+    }
+
+    // TODO create like an event handler and stuff
+    loop {
+      std::thread::sleep(std::time::Duration::from_secs(1));
+
+      if terminated.load(std::sync::atomic::Ordering::Relaxed) {
+        // Kill the process
+        self.process_handle.as_ref().unwrap().kill()?;
+        break;
+      }
+    }
 
     Ok(())
   }
