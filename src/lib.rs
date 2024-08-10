@@ -23,7 +23,7 @@ pub struct FirefoxConfig {
 
 #[derive(Debug)]
 pub struct ChromiumConfig {
-  // TODO
+  extensions: Vec<PathBuf>,
 }
 
 #[derive(Debug, Clone)]
@@ -255,7 +255,7 @@ impl Window {
     let browser_path = browser_path.unwrap();
 
     // TODO this needs to provide CLI options and crap
-    let mut cmd = std::process::Command::new(browser_path);
+    let mut cmd: std::process::Command = std::process::Command::new(browser_path);
 
     cmd.args(match self.browser.kind {
       BrowserKind::Chromium => browser::chromium::generate_cli_options(self),
@@ -265,8 +265,10 @@ impl Window {
       }
     });
 
-    if self.browser.kind == BrowserKind::Gecko {
-      browser::firefox::write_extra_profile_files(self)?;
+    match self.browser.kind {
+      BrowserKind::Chromium => browser::chromium::write_extra_profile_files(self)?,
+      BrowserKind::Gecko => browser::firefox::write_extra_profile_files(self)?,
+      _ => {}
     }
 
     let process = cmd.spawn()?;
@@ -289,7 +291,13 @@ impl Window {
           child.kill()?;
         }
 
-        w_tx.send(WebserverMessage::Kill)?;
+        match w_tx.send(WebserverMessage::Kill) {
+          Ok(_) => {}
+          Err(_) => {
+            // This likely means the thread is already dead
+          }
+        }
+
         webserver_thread.join()?;
         break;
       }
@@ -297,7 +305,13 @@ impl Window {
       // if the process is dead, break
       if let Some(child) = self.process_handle.as_ref() {
         if child.try_wait()?.is_some() {
-          w_tx.send(WebserverMessage::Kill)?;
+          match w_tx.send(WebserverMessage::Kill) {
+            Ok(_) => {}
+            Err(_) => {
+              // This likely means the thread is already dead
+            }
+          }
+
           webserver_thread.join()?;
           break;
         }
@@ -305,6 +319,9 @@ impl Window {
         break;
       }
     }
+
+    // If we have broken out of the loop, the window is closed
+    self.created = false;
 
     Ok(())
   }

@@ -19,6 +19,9 @@ fn main() -> Result<(), CrowserError> {
     match window.create() {
       Ok(_) => {
         println!("Window created on port {}", port);
+
+        // Once the window is closed, the profile will be cleared.
+        window.clear_profile()?;
         break;
       }
       Err(e) => {

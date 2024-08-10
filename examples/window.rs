@@ -14,5 +14,8 @@ fn main() -> Result<(), CrowserError> {
 
   window.create()?;
 
+  // Clear once the window is closed
+  window.clear_profile()?;
+
   Ok(())
 }

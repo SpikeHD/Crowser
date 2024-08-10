@@ -1,4 +1,15 @@
+use std::path::PathBuf;
+
 use crate::{ContentConfig, Window};
+
+/// In order to prevent profile collisions, the main user-provided profile directory is supplemented with additional folders.
+pub fn get_profile_dir(win: &Window) -> PathBuf {
+  let mut profile_dir = win.profile_directory.clone();
+  profile_dir.push("firefox");
+  profile_dir.push("profile");
+
+  profile_dir
+}
 
 /// Generate command line options required to make Firefox-based browsers
 /// look like a standalone app.
@@ -60,9 +71,10 @@ user_pref('gfx.webrender.all', {});
 user_pref('layers.acceleration.force-enabled', {});
 
 // For IPC
-user_pref('devtools.chrome.enabled', true);
-user_pref('devtools.debugger.prompt-connection', false);
-user_pref('devtools.debugger.remote-enabled', true);
+// I know this isn't used anymore but it should work for dev edition, or Floorp I think
+user_pref('xpinstall.signatures.required', false);
+user_pref('extensions.autoDisableScopes', 0);
+user_pref('extensions.enabledScopes', 5);
 
 // Media (ie autoplay)
 user_pref('media.autoplay.blocking_policy', false);
