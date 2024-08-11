@@ -9,13 +9,22 @@ pub enum CrowserError {
   WebserverSendError(std::sync::mpsc::SendError<WebserverMessage>),
   WebserverRecvError(std::sync::mpsc::RecvError),
   NoBrowser(String),
+  NoTab(String),
   DoAfterCreate(String),
   DoBeforeCreate(String),
   WebserverError(String),
+  CDPError(String),
+  WebRequestError(minreq::Error),
   Unknown(()),
 }
 
 impl std::error::Error for CrowserError {}
+
+impl From<Box<dyn Any + Send>> for CrowserError {
+  fn from(err: Box<dyn Any + Send>) -> Self {
+    CrowserError::Generic(err)
+  }
+}
 
 impl From<std::io::Error> for CrowserError {
   fn from(err: std::io::Error) -> Self {
@@ -35,9 +44,9 @@ impl From<std::sync::mpsc::RecvError> for CrowserError {
   }
 }
 
-impl From<Box<dyn Any + Send>> for CrowserError {
-  fn from(err: Box<dyn Any + Send>) -> Self {
-    CrowserError::Generic(err)
+impl From<minreq::Error> for CrowserError {
+  fn from(err: minreq::Error) -> Self {
+    CrowserError::WebRequestError(err)
   }
 }
 
@@ -55,9 +64,12 @@ impl std::fmt::Display for CrowserError {
       CrowserError::WebserverSendError(err) => write!(f, "Webserver send error: {}", err),
       CrowserError::WebserverRecvError(err) => write!(f, "Webserver receive error: {}", err),
       CrowserError::NoBrowser(msg) => write!(f, "No browser found: {}", msg),
+      CrowserError::NoTab(msg) => write!(f, "No tabs found: {}", msg),
       CrowserError::DoAfterCreate(msg) => write!(f, "Do after create error: {}", msg),
       CrowserError::DoBeforeCreate(msg) => write!(f, "Do before create error: {}", msg),
       CrowserError::WebserverError(msg) => write!(f, "Webserver error: {}", msg),
+      CrowserError::CDPError(msg) => write!(f, "CDP error: {}", msg),
+      CrowserError::WebRequestError(err) => write!(f, "Web request error: {}", err),
       CrowserError::Unknown(_) => write!(f, "Unknown error"),
     }
   }

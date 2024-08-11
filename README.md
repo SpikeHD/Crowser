@@ -62,7 +62,7 @@ fn main() -> Result<(), CrowserError> {
   let mut window = Window::new(config, None, profile_dir)?;
 
   // Make sure the profile is brand-new before launch
-  window.clear_profile()?;
+  window.clearn_profile()?;
 
   // This will spawn the window and block until it is closed
   window.create()?;
@@ -90,7 +90,7 @@ fn main() -> Result<(), CrowserError> {
 
     let mut window = Window::new(config, None, profile_dir.clone())?;
 
-    window.clear_profile()?;
+    window.clearn_profile()?;
 
     // Since we're looping, we'll break when we successfully create the window. This will
     // actually block the thread until the window is closed.

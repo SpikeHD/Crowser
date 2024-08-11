@@ -22,12 +22,12 @@ fn main() -> Result<(), CrowserError> {
     std::process::exit(1);
   }
 
-  win.clear_profile()?;
+  win.clear_profile().unwrap_or_default();
 
   win.create()?;
 
   // Clear once the window is closed
-  win.clear_profile()?;
+  win.clear_profile().unwrap_or_default();
 
   Ok(())
 }

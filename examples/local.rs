@@ -14,14 +14,14 @@ fn main() -> Result<(), CrowserError> {
 
     let mut window = Window::new(config, None, profile_dir.clone())?;
 
-    window.clear_profile()?;
+    window.clear_profile().unwrap_or_default();
 
     match window.create() {
       Ok(_) => {
         println!("Window created on port {}", port);
 
         // Once the window is closed, the profile will be cleared.
-        window.clear_profile()?;
+        window.clear_profile().unwrap_or_default();
         break;
       }
       Err(e) => {

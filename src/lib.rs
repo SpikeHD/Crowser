@@ -1,6 +1,5 @@
 use std::{
-  path::PathBuf,
-  sync::{atomic::AtomicBool, Arc},
+  path::PathBuf, sync::{atomic::AtomicBool, Arc, Mutex}
 };
 
 use browser::{get_browser_path, Browser, BrowserKind};
@@ -10,6 +9,7 @@ use shared_child::SharedChild;
 
 pub mod browser;
 pub mod error;
+mod ipc;
 mod webserver;
 
 // Re-export the include_dir macro
@@ -87,6 +87,8 @@ pub struct Window {
 
   firefox_config: Option<FirefoxConfig>,
   chromium_config: Option<ChromiumConfig>,
+
+  ipc: Arc<Mutex<Option<ipc::BrowserIpc>>>,
 }
 
 impl Window {
@@ -124,6 +126,8 @@ impl Window {
 
       firefox_config: None,
       chromium_config: None,
+
+      ipc: Arc::new(Mutex::new(None)),
     })
   }
 
@@ -175,6 +179,11 @@ impl Window {
     self.initialization_script = script.as_ref().to_string();
 
     Ok(())
+  }
+
+  /// Get a clone of the IPC handler, so you can use it in threads without bringing along the whole Window struct.
+  pub fn get_ipc(&self) -> Arc<Mutex<Option<ipc::BrowserIpc>>> {
+    self.ipc.clone()
   }
 
   /// Disable hardware acceleration in the browser window.
@@ -276,6 +285,10 @@ impl Window {
 
     self.process_handle = Some(SharedChild::new(process)?);
 
+    // Now that the process is running, we can start attempting to connect to it with IPC
+    let ipc = ipc::BrowserIpc::new(9223)?;
+    self.ipc.lock().unwrap().replace(ipc);
+
     for signal in &[signal_hook::consts::SIGINT, signal_hook::consts::SIGTERM] {
       let terminated = terminated.clone();
       signal_hook::flag::register(*signal, terminated)?;
@@ -294,7 +307,7 @@ impl Window {
         match w_tx.send(WebserverMessage::Kill) {
           Ok(_) => {}
           Err(_) => {
-            // This likely means the thread is already dead
+            // TODO This likely means the thread is already dead
           }
         }
 
@@ -308,7 +321,7 @@ impl Window {
           match w_tx.send(WebserverMessage::Kill) {
             Ok(_) => {}
             Err(_) => {
-              // This likely means the thread is already dead
+              // TODO This likely means the thread is already dead
             }
           }
 
