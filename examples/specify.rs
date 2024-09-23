@@ -11,7 +11,12 @@ fn main() -> Result<(), CrowserError> {
   // Specify Firefox-based browsers
   let mut win = Window::new(config, Some(BrowserKind::Gecko), profile_dir)?;
 
-  win.clear_profile()?;
+  match win.clear_profile() {
+    Ok(_) => {}
+    Err(err) => {
+      println!("Error clearing profile: {}", err);
+    }
+  };
 
   win.create()?;
   

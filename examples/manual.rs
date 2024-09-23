@@ -22,7 +22,12 @@ fn main() -> Result<(), CrowserError> {
     std::process::exit(1);
   }
 
-  win.clear_profile()?;
+  match win.clear_profile() {
+    Ok(_) => {}
+    Err(err) => {
+      println!("Error clearing profile: {}", err);
+    }
+  };
 
   win.create()?;
 
