@@ -1,4 +1,7 @@
-use crowser::{self, browser::{get_best_browser, get_browser_path}};
+use crowser::{
+  self,
+  browser::{get_best_browser, get_browser_path},
+};
 
 pub fn main() {
   println!("All browsers available on system:");
@@ -14,6 +17,8 @@ pub fn main() {
   println!("Best browser on system:");
   println!(
     "{:?} ({:?}, located at {:?})",
-    best.name, best.kind, get_browser_path(&best)
+    best.name,
+    best.kind,
+    get_browser_path(&best)
   );
 }
