@@ -10,7 +10,9 @@ fn main() -> Result<(), CrowserError> {
 
   // Engine provided doesn't matter, we provide one manually in a moment
   let mut win = Window::new(config, None, profile_dir)?;
-  let the_best_browser_ever = get_all_existing_browsers().into_iter().find(|b| b.name == "edge");
+  let the_best_browser_ever = get_all_existing_browsers()
+    .into_iter()
+    .find(|b| b.name == "edge");
 
   // If you want the browser's path, you can call:
   // let path = get_browser_path(&the_best_browser_ever.unwrap());
@@ -22,7 +24,12 @@ fn main() -> Result<(), CrowserError> {
     std::process::exit(1);
   }
 
-  win.clear_profile().unwrap_or_default();
+  match win.clear_profile() {
+    Ok(_) => {}
+    Err(err) => {
+      println!("Error clearing profile: {}", err);
+    }
+  };
 
   win.create()?;
 

@@ -14,7 +14,12 @@ fn main() -> Result<(), CrowserError> {
 
     let mut window = Window::new(config, None, profile_dir.clone())?;
 
-    window.clear_profile().unwrap_or_default();
+    match window.clear_profile() {
+      Ok(_) => {}
+      Err(err) => {
+        println!("Error clearing profile: {}", err);
+      }
+    };
 
     match window.create() {
       Ok(_) => {
