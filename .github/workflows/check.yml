@@ -46,3 +46,17 @@ jobs:
         with:
           command: clippy
           args: --manifest-path ./Cargo.toml --all -- --deny warnings
+
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rust-lang/setup-rust-toolchain@v1.8
+
+      - name: Install cargo-audit
+        run: cargo install cargo-audit
+
+      - name: Cargo audit
+        uses: actions-rs/cargo@v1
+        with:
+          command: audit
