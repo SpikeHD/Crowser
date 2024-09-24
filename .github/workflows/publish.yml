@@ -26,7 +26,7 @@ jobs:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_TOKEN }}
 
       # If this was successful, also make a "release"
-      - name: Create release using all artifacts
+      - name: Create release
         uses: softprops/action-gh-release@v2
         if: github.event_name != 'schedule'
         with:
