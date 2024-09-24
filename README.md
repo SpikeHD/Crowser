@@ -23,7 +23,7 @@
 
 ## Browser support
 
-All browser support comes with a few small caveats. You may notice small inconsistencies between, say, your app running in Firefox and in Chrome. Many of these are also not properly tested, so if you find any issues, feel free to [submit an issue](https://github.com/SpikeHD/Crowser/issues/choose)!
+All browser support comes with a few small caveats. You may notice small inconsistencies between, say, your app running in Firefox and in Chrome. Many of these are also not properly tested, so if you find any issues, feel free to [submit an issue](https://github.com/SpikeHD/Crowser/issues/new/choose)!
 
 * Chrome/Chromium (stable, beta, dev, canary)
 * Edge (stable, beta, dev, canary)
