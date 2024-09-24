@@ -1,4 +1,4 @@
-use commands::{CDPCommand, CDPResponse};
+use commands::CDPCommand;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tungstenite::Message;
@@ -33,7 +33,7 @@ struct CDPMessenger {
   rx: flume::Receiver<String>,
 }
 
-pub struct CDP {
+pub struct Cdp {
   cmd_id: u64,
 
   cmd: CDPMessenger,
@@ -41,16 +41,16 @@ pub struct CDP {
 }
 
 /// TODO: Lots needs to be done here:
-/// 
+///
 /// - Create two message queues, one for command results and one for events
 /// - Enforce syncronization of the command results (ie if two are run in succession, they may desync)
 ///   - This will probs be done by using a hashmap to store command IDs and results and such. Thank you CDP for providing those IDs lol
-impl CDP {
+impl Cdp {
   pub fn new() -> Self {
     let (cmd_tx, cmd_rx) = flume::unbounded();
     let (ws_tx, ws_rx) = flume::unbounded();
 
-    CDP {
+    Cdp {
       cmd_id: 0,
       cmd: CDPMessenger {
         tx: cmd_tx,
@@ -91,15 +91,19 @@ impl CDP {
     Ok(())
   }
 
-  pub fn poll(&mut self) -> Result<String, CrowserError> {
-    self
-      .ws
-      .rx
-      .recv()
-      .map_err(|_| CrowserError::CDPError("Could not receive message".to_string()))
-  }
+  // pub fn poll(&mut self) -> Result<String, CrowserError> {
+  //   self
+  //     .ws
+  //     .rx
+  //     .recv()
+  //     .map_err(|_| CrowserError::CDPError("Could not receive message".to_string()))
+  // }
 
-  pub fn send(&mut self, cmd: CDPCommand, timeout: Option<std::time::Duration>) -> Result<Value, CrowserError> {
+  pub fn send(
+    &mut self,
+    cmd: CDPCommand,
+    timeout: Option<std::time::Duration>,
+  ) -> Result<Value, CrowserError> {
     let msg = serde_json::to_string(&CDPMessageInternal::new(self.cmd_id + 1, cmd));
     let msg = msg.map_err(|e| {
       CrowserError::CDPError("Could not serialize message: ".to_string() + &e.to_string())
@@ -107,11 +111,9 @@ impl CDP {
 
     self.cmd_id += 1;
 
-    self
-      .cmd
-      .tx
-      .send(msg)
-      .map_err(|e| CrowserError::CDPError("Could not send message: ".to_string() + &e.to_string()))?;
+    self.cmd.tx.send(msg).map_err(|e| {
+      CrowserError::CDPError("Could not send message: ".to_string() + &e.to_string())
+    })?;
 
     let rx = self.ws.rx.clone();
 
@@ -123,7 +125,9 @@ impl CDP {
         return Ok(serde_json::from_str(&val).unwrap_or_default());
       }
 
-      Err(CrowserError::CDPError("Timeout waiting for response".to_string()))
+      Err(CrowserError::CDPError(
+        "Timeout waiting for response".to_string(),
+      ))
     });
 
     match wait_thread.join() {
@@ -176,8 +180,8 @@ pub fn ws_executor(
   }
 }
 
-pub fn launch(port: u16) -> Result<CDP, CrowserError> {
-  let mut cdp = CDP::new();
+pub fn launch(port: u16) -> Result<Cdp, CrowserError> {
+  let mut cdp = Cdp::new();
   cdp.connect(port)?;
   Ok(cdp)
 }

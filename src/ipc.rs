@@ -3,16 +3,14 @@ use std::fmt::Debug;
 use crate::{
   cdp::{
     self,
-    commands::{CDPCommand, PageEnable, RuntimeEvaluate, TargetAttachToTarget, TargetGetTargets},
-    CDP,
+    commands::{CDPCommand, RuntimeEvaluate, TargetAttachToTarget, TargetGetTargets},
+    Cdp,
   },
   error::CrowserError,
 };
 
-type NoArgs = Option<serde_json::Value>;
-
 pub struct BrowserIpc {
-  cdp: CDP,
+  cdp: Cdp,
   session_id: String,
 }
 
@@ -26,7 +24,10 @@ impl Debug for BrowserIpc {
 impl BrowserIpc {
   pub fn new(port: u16) -> Result<Self, CrowserError> {
     let cdp = cdp::launch(port)?;
-    let mut ipc = BrowserIpc { cdp, session_id: String::new() };
+    let mut ipc = BrowserIpc {
+      cdp,
+      session_id: String::new(),
+    };
 
     ipc.attach()?;
 
@@ -52,7 +53,8 @@ impl BrowserIpc {
     let targets = match targets.get("targetInfos") {
       Some(val) => val,
       None => return Err(CrowserError::CDPError("No targets found".to_string())),
-    }.as_array();
+    }
+    .as_array();
 
     if let Some(targets) = targets {
       for target in targets {

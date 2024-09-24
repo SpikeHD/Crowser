@@ -1,6 +1,6 @@
 /**
  * You may be wondering: why are you manually creating these commands? Isn't there a library for this?
- * 
+ *
  * There sure is, several even! However, to keep this project as light as possible, I decided to only implement the commands I needed.
  * I highly doubt I will need like, 90% of the available commands anyways, so this is almost definitely the best way to go. I initially
  * tried this with a CDP crate and it bloated the binary up by several megabytes! No thanks!
