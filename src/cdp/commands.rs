@@ -24,9 +24,9 @@ impl From<String> for CDPCommand {
   }
 }
 
-impl Into<String> for CDPCommand {
-  fn into(self) -> String {
-    serde_json::to_string(&self).unwrap()
+impl From<CDPCommand> for String {
+  fn from(val: CDPCommand) -> Self {
+    serde_json::to_string(&val).unwrap()
   }
 }
 

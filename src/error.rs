@@ -92,7 +92,7 @@ impl std::fmt::Display for CrowserError {
       CrowserError::WebserverError(msg) => write!(f, "Webserver error: {}", msg),
       CrowserError::CDPError(msg) => write!(f, "CDP error: {}", msg),
       CrowserError::WebRequestError(err) => write!(f, "Web request error: {}", err),
-      CrowserError::WebsocketError(err) => write!(f, "Websocket error: {}", err.to_string()),
+      CrowserError::WebsocketError(err) => write!(f, "Websocket error: {}", err),
       CrowserError::FromUtf8Error(err) => write!(f, "UTF-8 error: {}", err),
       CrowserError::FlumeSendError(err) => write!(f, "Flume send error: {}", err),
       CrowserError::FlumeRecvError(err) => write!(f, "Flume receive error: {}", err),

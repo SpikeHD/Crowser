@@ -3,7 +3,7 @@ use std::fmt::Debug;
 use crate::{
   cdp::{
     self,
-    commands::{CDPCommand, RuntimeEvaluate, TargetGetTargets},
+    commands::{CDPCommand, RuntimeEvaluate},
     CDP,
   },
   error::CrowserError,
