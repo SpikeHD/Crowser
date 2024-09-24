@@ -48,7 +48,7 @@ impl Webserver {
 
       // Safe to unwrap, we just checked
       let file = file.unwrap();
-      let contents = file.contents_utf8().unwrap();
+      let contents = file.contents_utf8().unwrap_or_default();
       let mime = mime_guess::from_path(file.path()).first_or_octet_stream();
       let mut res = Response::from_string(contents);
 

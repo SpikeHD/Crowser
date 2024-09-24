@@ -204,7 +204,8 @@ pub fn get_ws_url(port: u16) -> Result<String, CrowserError> {
 }
 
 fn attempt_get_ws_url(contents: impl AsRef<str>) -> Result<String, CrowserError> {
-  let val = contents.as_ref()
+  let val = contents
+    .as_ref()
     .split("\"webSocketDebuggerUrl\":")
     .collect::<Vec<&str>>();
   let val = val.get(1);
@@ -215,7 +216,7 @@ fn attempt_get_ws_url(contents: impl AsRef<str>) -> Result<String, CrowserError>
     ));
   }
 
-  let val = val.unwrap().split("}").collect::<Vec<&str>>()[0];
+  let val = val.unwrap_or(&"").split("}").collect::<Vec<&str>>()[0];
   let val = val.trim().replace('\"', "");
 
   Ok(val)

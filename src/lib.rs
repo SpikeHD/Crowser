@@ -1,5 +1,6 @@
 use std::{
-  path::PathBuf, sync::{atomic::AtomicBool, Arc, Mutex}
+  path::PathBuf,
+  sync::{atomic::AtomicBool, Arc, Mutex},
 };
 
 use browser::{get_browser_path, Browser, BrowserKind};
