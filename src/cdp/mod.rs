@@ -1,5 +1,6 @@
-use commands::CDPCommand;
+use commands::{CDPCommand, CDPResponse};
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use tungstenite::Message;
 
 use crate::error::CrowserError;
@@ -7,10 +8,13 @@ use crate::error::CrowserError;
 pub mod commands;
 
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct CDPMessageInternal {
   id: u64,
   method: String,
   params: serde_json::Value,
+  #[serde(skip_serializing_if = "Option::is_none")]
+  session_id: Option<String>,
 }
 
 impl CDPMessageInternal {
@@ -19,6 +23,7 @@ impl CDPMessageInternal {
       id,
       method: cmd.method,
       params: cmd.params,
+      session_id: cmd.session_id,
     }
   }
 }
@@ -35,6 +40,11 @@ pub struct CDP {
   ws: CDPMessenger,
 }
 
+/// TODO: Lots needs to be done here:
+/// 
+/// - Create two message queues, one for command results and one for events
+/// - Enforce syncronization of the command results (ie if two are run in succession, they may desync)
+///   - This will probs be done by using a hashmap to store command IDs and results and such. Thank you CDP for providing those IDs lol
 impl CDP {
   pub fn new() -> Self {
     let (cmd_tx, cmd_rx) = flume::unbounded();
@@ -89,13 +99,11 @@ impl CDP {
       .map_err(|_| CrowserError::CDPError("Could not receive message".to_string()))
   }
 
-  pub fn send(&mut self, cmd: CDPCommand) -> Result<(), CrowserError> {
+  pub fn send(&mut self, cmd: CDPCommand, timeout: Option<std::time::Duration>) -> Result<Value, CrowserError> {
     let msg = serde_json::to_string(&CDPMessageInternal::new(self.cmd_id + 1, cmd));
     let msg = msg.map_err(|e| {
       CrowserError::CDPError("Could not serialize message: ".to_string() + &e.to_string())
     })?;
-
-    println!("Sending: {}", msg);
 
     self.cmd_id += 1;
 
@@ -103,7 +111,25 @@ impl CDP {
       .cmd
       .tx
       .send(msg)
-      .map_err(|e| CrowserError::CDPError("Could not send message: ".to_string() + &e.to_string()))
+      .map_err(|e| CrowserError::CDPError("Could not send message: ".to_string() + &e.to_string()))?;
+
+    let rx = self.ws.rx.clone();
+
+    // Wait for response to be recieved
+    let wait_thread = std::thread::spawn(move || {
+      let timeout = timeout.unwrap_or(std::time::Duration::from_secs(1));
+
+      if let Ok(val) = rx.recv_timeout(timeout) {
+        return Ok(serde_json::from_str(&val).unwrap_or_default());
+      }
+
+      Err(CrowserError::CDPError("Timeout waiting for response".to_string()))
+    });
+
+    match wait_thread.join() {
+      Ok(val) => val,
+      Err(err) => Err(err.into()),
+    }
   }
 }
 
@@ -139,14 +165,14 @@ pub fn ws_executor(
     };
 
     if !cmd.is_empty() {
-      println!("Got command: {}", cmd);
+      println!("-> {}", cmd);
       ws.send(cmd.into()).map_err(|e| {
         CrowserError::CDPError("Could not send command: ".to_string() + &e.to_string())
       })?;
     }
 
     if !msg.is_empty() {
-      println!("Got message: {}", msg);
+      println!("<- {}", msg);
       tx.send(msg.to_string())?;
     }
   }
