@@ -81,6 +81,12 @@ impl BrowserIpc {
       }
     }
 
+    // Runtime.enable
+    // This is a fix for Firefox
+    // lol: https://bugzilla.mozilla.org/show_bug.cgi?id=1623482#c12
+    let cmd = CDPCommand::new("Runtime.enable", serde_json::Value::Null, Some(self.session_id.clone()));
+    self.cdp.send(cmd, None)?;
+
     Ok(())
   }
 
