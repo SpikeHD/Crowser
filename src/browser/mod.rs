@@ -347,8 +347,8 @@ pub fn get_browser_path(browser: &Browser) -> Option<PathBuf> {
 
   #[cfg(target_os = "linux")]
   for binary in &browser.unix {
-    if which::which(binary).is_ok() {
-      return Some(PathBuf::from(binary));
+    if let Ok(path) = which::which(binary) {
+      return Some(path);
     }
   }
 
