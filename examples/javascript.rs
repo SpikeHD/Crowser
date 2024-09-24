@@ -15,8 +15,8 @@ fn main() -> Result<(), CrowserError> {
 
   std::thread::spawn(move || {
     std::thread::sleep(std::time::Duration::from_secs(5));
-    
-    if let Some(ipc) = ipc.lock().unwrap().as_ref() {
+
+    if let Some(ipc) = ipc.lock().unwrap().as_mut() {
       ipc.eval("alert('Hello from Crowser!')").unwrap_or_default();
     }
   });

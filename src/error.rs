@@ -15,6 +15,10 @@ pub enum CrowserError {
   WebserverError(String),
   CDPError(String),
   WebRequestError(minreq::Error),
+  WebsocketError(tungstenite::Error),
+  FromUtf8Error(std::string::FromUtf8Error),
+  FlumeSendError(flume::SendError<String>),
+  FlumeRecvError(flume::RecvError),
   Unknown(()),
 }
 
@@ -50,6 +54,24 @@ impl From<minreq::Error> for CrowserError {
   }
 }
 
+impl From<std::string::FromUtf8Error> for CrowserError {
+  fn from(err: std::string::FromUtf8Error) -> Self {
+    CrowserError::FromUtf8Error(err)
+  }
+}
+
+impl From<flume::SendError<String>> for CrowserError {
+  fn from(err: flume::SendError<String>) -> Self {
+    CrowserError::FlumeSendError(err)
+  }
+}
+
+impl From<flume::RecvError> for CrowserError {
+  fn from(err: flume::RecvError) -> Self {
+    CrowserError::FlumeRecvError(err)
+  }
+}
+
 impl From<()> for CrowserError {
   fn from(_: ()) -> Self {
     CrowserError::Unknown(())
@@ -70,6 +92,10 @@ impl std::fmt::Display for CrowserError {
       CrowserError::WebserverError(msg) => write!(f, "Webserver error: {}", msg),
       CrowserError::CDPError(msg) => write!(f, "CDP error: {}", msg),
       CrowserError::WebRequestError(err) => write!(f, "Web request error: {}", err),
+      CrowserError::WebsocketError(err) => write!(f, "Websocket error: {}", err.to_string()),
+      CrowserError::FromUtf8Error(err) => write!(f, "UTF-8 error: {}", err),
+      CrowserError::FlumeSendError(err) => write!(f, "Flume send error: {}", err),
+      CrowserError::FlumeRecvError(err) => write!(f, "Flume receive error: {}", err),
       CrowserError::Unknown(_) => write!(f, "Unknown error"),
     }
   }

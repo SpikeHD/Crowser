@@ -1,5 +1,6 @@
 use std::{
-  path::PathBuf, sync::{atomic::AtomicBool, Arc, Mutex}
+  path::PathBuf,
+  sync::{atomic::AtomicBool, Arc, Mutex},
 };
 
 use browser::{get_browser_path, Browser, BrowserKind};
@@ -8,6 +9,7 @@ use include_dir::Dir;
 use shared_child::SharedChild;
 
 pub mod browser;
+mod cdp;
 pub mod error;
 mod ipc;
 mod webserver;
