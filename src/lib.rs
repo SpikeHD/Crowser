@@ -1,6 +1,5 @@
 use std::{
-  path::PathBuf,
-  sync::{atomic::AtomicBool, Arc, Mutex},
+  path::PathBuf, sync::{atomic::AtomicBool, Arc, Mutex}
 };
 
 use browser::{get_browser_path, Browser, BrowserKind};
@@ -12,6 +11,7 @@ pub mod browser;
 mod cdp;
 pub mod error;
 mod ipc;
+mod util;
 mod webserver;
 
 // Re-export the include_dir macro
@@ -267,14 +267,18 @@ impl Window {
 
     // TODO this needs to provide CLI options and crap
     let mut cmd: std::process::Command = std::process::Command::new(browser_path);
-
-    cmd.args(match self.browser.kind {
+    let mut args = match self.browser.kind {
       BrowserKind::Chromium => browser::chromium::generate_cli_options(self),
       BrowserKind::Gecko => browser::firefox::generate_cli_options(self),
       _ => {
         vec![]
       }
-    });
+    };
+    let remote_debugging_port = util::port::get_available_port();
+
+    args.push("--remote-debugging-port=".to_string() + &remote_debugging_port.to_string());
+
+    cmd.args(args);
 
     match self.browser.kind {
       BrowserKind::Chromium => browser::chromium::write_extra_profile_files(self)?,
@@ -288,7 +292,7 @@ impl Window {
     self.process_handle = Some(SharedChild::new(process)?);
 
     // Now that the process is running, we can start attempting to connect to it with IPC
-    let ipc = ipc::BrowserIpc::new(9223)?;
+    let ipc = ipc::BrowserIpc::new(remote_debugging_port)?;
     self.ipc.lock().unwrap().replace(ipc);
 
     for signal in &[signal_hook::consts::SIGINT, signal_hook::consts::SIGTERM] {

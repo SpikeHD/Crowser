@@ -74,7 +74,8 @@ user_pref('layers.acceleration.force-enabled', {});
 user_pref('devtools.chrome.enabled', true);
 user_pref('devtools.debugger.remote-enabled', true);
 user_pref('devtools.debugger.prompt-connection', false);
-user_pref('devtools.debugger.remote-port', 9223);
+// guess this will have to change to webdriver bidi soon
+user_pref('remote.active-protocols', 2);
 
 // Media (ie autoplay)
 user_pref('media.autoplay.blocking_policy', false);

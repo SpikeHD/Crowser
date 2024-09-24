@@ -26,7 +26,6 @@ pub fn generate_cli_options(win: &Window) -> Vec<String> {
     "--disable-features=AutofillServerCommunication,WinRetrieveSuggestionsOnlyOnDemand,MediaSessionService,HardwareMediaKeyHandling".to_string(),
     "--new-window".to_string(),
     // Chrome remote debugging stuff
-    "--remote-debugging-port=9223".to_string(),
 
     // Configurable stuff
     format!("--window-size={},{}", win.width, win.height),

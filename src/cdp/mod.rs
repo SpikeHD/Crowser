@@ -188,12 +188,32 @@ pub fn get_ws_url(port: u16) -> Result<String, CrowserError> {
   let url = format!("http://127.0.0.1:{}/json/version", port);
   let resp = minreq::get(url).send()?;
 
-  let val = resp.as_str()?;
-  let val = val
+  for _ in 0..50 {
+    match attempt_get_ws_url(resp.as_str()?) {
+      Ok(val) => return Ok(val),
+      Err(_) => std::thread::sleep(std::time::Duration::from_millis(100)),
+    }
+  }
+
+  Err(CrowserError::CDPError(
+    "Could not get websocket URL".to_string(),
+  ))
+}
+
+fn attempt_get_ws_url(contents: impl AsRef<str>) -> Result<String, CrowserError> {
+  let val = contents.as_ref()
     .split("\"webSocketDebuggerUrl\":")
-    .collect::<Vec<&str>>()[1];
-  let val = val.split("}").collect::<Vec<&str>>()[0];
+    .collect::<Vec<&str>>();
+  let val = val.get(1);
+
+  if val.is_none() {
+    return Err(CrowserError::CDPError(
+      "Could not get websocket URL".to_string(),
+    ));
+  }
+
+  let val = val.unwrap().split("}").collect::<Vec<&str>>()[0];
   let val = val.trim().replace('\"', "");
 
-  Ok(val.to_string())
+  Ok(val)
 }
