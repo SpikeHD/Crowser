@@ -68,7 +68,8 @@ impl Cdp {
     // Spend a few second trying to get the WS URL
     let mut ws_url = String::new();
 
-    for _ in 0..50 {
+    // 1 minute wait
+    for _ in 0..600 {
       match get_ws_url(port) {
         Ok(val) => {
           ws_url = val.trim().to_string();
