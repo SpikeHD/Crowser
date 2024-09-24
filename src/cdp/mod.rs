@@ -163,10 +163,7 @@ pub fn ws_executor(
       Ok(val) => val,
       Err(_) => Message::Binary(vec![]),
     };
-    let cmd = match rx.try_recv() {
-      Ok(val) => val,
-      Err(_) => String::new(),
-    };
+    let cmd = rx.try_recv().unwrap_or_default();
 
     if !cmd.is_empty() {
       ws.send(cmd.into()).map_err(|e| {
