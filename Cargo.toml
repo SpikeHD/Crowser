@@ -4,7 +4,7 @@ description = "Create \"desktop apps\" using user-installed browsers"
 readme = "README.md"
 homepage = "https://github.com/SpikeHD/Crowser"
 repository = "https://github.com/SpikeHD/Crowser"
-keywords = [ "browser", "desktop", "app", "webview", "web", "view", "crowser" ]
+keywords = [ "browser", "desktop", "app", "webview", "crowser" ]
 categories = [ "gui", "web-programming" ]
 
 version = "0.1.0"
