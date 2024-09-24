@@ -93,4 +93,5 @@ pub struct TargetGetTargets {}
 #[serde(rename_all = "camelCase")]
 pub struct TargetAttachToTarget {
   pub target_id: String,
+  pub flatten: bool,
 }

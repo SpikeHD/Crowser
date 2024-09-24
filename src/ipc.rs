@@ -64,6 +64,7 @@ impl BrowserIpc {
 
         let t_params = TargetAttachToTarget {
           target_id: target["targetId"].as_str().unwrap_or_default().to_string(),
+          flatten: true,
         };
         let t_cmd = CDPCommand::new("Target.attachToTarget", t_params, None);
         let result = self.cdp.send(t_cmd, None)?;

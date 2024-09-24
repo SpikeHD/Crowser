@@ -165,14 +165,12 @@ pub fn ws_executor(
     };
 
     if !cmd.is_empty() {
-      println!("-> {}", cmd);
       ws.send(cmd.into()).map_err(|e| {
         CrowserError::CDPError("Could not send command: ".to_string() + &e.to_string())
       })?;
     }
 
     if !msg.is_empty() {
-      println!("<- {}", msg);
       tx.send(msg.to_string())?;
     }
   }
