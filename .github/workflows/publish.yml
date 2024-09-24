@@ -24,3 +24,15 @@ jobs:
           command: publish
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_TOKEN }}
+
+      # If this was successful, also make a "release"
+      - name: Create release using all artifacts
+        uses: softprops/action-gh-release@v2
+        if: github.event_name != 'schedule'
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          # Release name is the tag name
+          name: ${{ github.ref_name }}
+          draft: false
+          generate_release_notes: true
+          prerelease: false
