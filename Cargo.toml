@@ -1,6 +1,7 @@
 [package]
 name = "crowser"
-description = "Create desktop apps using user-installed browsers"
+description = "Create \"desktop apps\" using user-installed browsers"
+readme = "README.md"
 homepage = "https://github.com/SpikeHD/Crowser"
 repository = "https://github.com/SpikeHD/Crowser"
 keywords = [ "browser", "desktop", "app", "webview", "web", "view", "crowser" ]

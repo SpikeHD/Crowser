@@ -1,3 +1,25 @@
+/*!
+# Browser-related functionality
+
+This module contains everything needed to detect and specify different browser installations.
+
+While most of this functionality is handled for you, you can use these to get insight on any specific tweaks
+you may need to apply in your own project.
+
+```rust
+let browser = get_best_browser(None);
+
+if let Some(browser) = browser {
+  match browser.kind {
+    BrowserKind::Chromium => {
+      apply_chromium_specific_config();
+    }
+    _ => {}
+  }
+}
+```
+*/
+
 use std::{env, path::PathBuf};
 
 pub mod chromium;
@@ -22,6 +44,7 @@ pub enum BrowserKind {
   Unknown,
 }
 
+/// A configuration object for a browser that contains possible locations and such, on Windows.
 #[derive(Debug, Clone)]
 pub struct BrowserWindowsConfig {
   pub paths: Vec<PathBuf>,

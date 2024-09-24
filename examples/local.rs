@@ -6,7 +6,8 @@ fn main() -> Result<(), CrowserError> {
 
   let dir = include_dir::include_dir!("$CARGO_MANIFEST_DIR/examples/local");
 
-  for port in 8000..8050 {
+  //  To be safe, we'll try to find an open port between 9000 and 9999
+  for port in 9000..9999 {
     let config = LocalConfig {
       port,
       directory: dir.clone(),

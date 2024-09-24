@@ -1,3 +1,106 @@
+/*! # Crowser
+
+Create "desktop apps" using user-installed browsers.
+
+## Main features
+* ~1MB binary size with minimal dependencies (except for the browser, of course!)
+* Multi-platform. Supports Windows, macOS, and Linux.
+* Support for both local and remote websites.
+* Maximizes performance of whatever browser is chosen, and uses an entirely separate browser profile.
+
+**NOTE**: This library will basically forever and always be intended for low-stakes or experimental use. It's really hard to guarantee working functionality and consistency across a bunch of different browsers, so please keep that in mind!
+
+## Browser support
+
+All browser support comes with a few small caveats. You may notice small inconsistencies between, say, your app running in Firefox and in Chrome.
+
+* Chrome/Chromium (stable, beta, dev, canary)
+* Edge (stable, beta, dev, canary)
+* Firefox (stable, beta, dev, nightly)
+* Floorp
+* Thorium
+* Brave
+* Vivaldi
+* Librewolf
+* Waterfox
+* Mercury
+
+# Usage
+
+More examples can be found in the [examples](./examples) directory. Try them with `cargo run --example <example>`!
+
+## Displaying a remote website
+```rust
+use crowser::{error::CrowserError, RemoteConfig, Window};
+
+fn main() -> Result<(), CrowserError> {
+  // Profile directories are specified by you, so put it wherever makes sense!
+  let mut profile_dir = PathBuf::from("/path/to/your/app/profiles");
+
+  let config = RemoteConfig {
+    url: "https://example.com".to_string(),
+  };
+
+  let mut window = Window::new(config, None, profile_dir)?;
+
+  // Make sure the profile is brand-new before launch
+  window.clean_profile()?;
+
+  // This will spawn the window and block until it is closed
+  window.create()?;
+
+  Ok(())
+}
+```
+
+## Embedding a local website
+```rust
+use crowser::{error::CrowserError, include_dir, LocalConfig, Window};
+
+fn main() -> Result<(), CrowserError> {
+  let mut profile_dir = PathBuf::from("/path/to/your/app/profiles");
+
+  // include_dir is a re-export of the include_dir crate
+  let dir = include_dir::include_dir!("/path/to/your/app/dist");
+
+  // To be safe, we'll try to find an open port between 9000 and 9999
+  for port in 9000..9999 {
+    let config = LocalConfig {
+      port,
+      directory: dir.clone(),
+    };
+
+    let mut window = Window::new(config, None, profile_dir.clone())?;
+
+    window.clean_profile()?;
+
+    // Since we're looping, we'll break when we successfully create the window. This will
+    // actually block the thread until the window is closed.
+    match window.create() {
+      Ok(_) => {
+        println!("Window created on port {}", port);
+        break;
+      }
+      Err(e) => {
+        println!("Error creating window on port {}: {:?}", port, e);
+      }
+    }
+  }
+
+  Ok(())
+}
+```
+
+# How does it work?
+
+On a high level, Crowser works by first detecting browser installations on the user's system (using known paths and ~~registry keys~~). Then, depending on the browser chosen, it will make some specific changes to the browser's CLI arguments,
+profile directory, or both. For example, for Firefox there is a `user.js` file in all profiles that can control much of the browser's default behavior. In Chromium-based browsers, there are a stupid amount of command-line arguments that can be
+used to control the browser's behavior ([check out this huge list!](https://peter.sh/experiments/chromium-command-line-switches/)).
+
+IPC is facilitated through the [Chrome DevTools Protocol](https://chromedevtools.github.io/devtools-protocol/). To keep the binary size small, the implementation is custom and therefore a little scuffed, but developers do not have to
+care about it anyways!
+*/
+
 use std::{
   path::PathBuf,
   sync::{atomic::AtomicBool, Arc, Mutex},
@@ -19,14 +122,16 @@ mod webserver;
 pub use include_dir;
 use webserver::{Webserver, WebserverMessage};
 
+/// Firefox/Gecko-specific configuration options. These have no effect if the window is not a Firefox window.
 #[derive(Debug)]
 pub struct FirefoxConfig {
-  custom_css: Option<String>,
+  pub custom_css: Option<String>,
 }
 
+/// Chromium-specific configuration options. These have no effect if the window is not a Chromium window.
 #[derive(Debug)]
 pub struct ChromiumConfig {
-  extensions: Vec<PathBuf>,
+  pub extensions: Vec<PathBuf>,
 }
 
 #[derive(Debug, Clone)]
@@ -48,8 +153,8 @@ pub struct RemoteConfig {
   pub url: String,
 }
 
-// This is so the Window::new() can just be provided a LocalConfig or RemoteConfig
-// and it will automatically create the correct ContentConfig
+/// This is so the Window::new() can just be provided a LocalConfig or RemoteConfig
+/// and it will automatically create the correct ContentConfig
 pub trait IntoContentConfig {
   fn into_content_config(self) -> ContentConfig;
 }
@@ -70,6 +175,28 @@ impl IntoContentConfig for RemoteConfig {
 ///
 /// This struct is used to create and manage a browser window.
 /// It contains all configuration, controls, etc. needed to control the window.
+///
+/// # Example
+/// ```rust
+/// let mut win = Window::new(RemoteConfig {
+///   url: "https://example.com".to_string(),
+/// }, None, PathBuf::from("/path/to/your/app/profiles"))?;
+///
+/// // By default, the window will be created with the "best" browser, but you can also specify a browser, or even construct a custom one!
+/// win.set_browser(Browser {
+///   name: "my_browser ",
+///   kind: BrowserKind::Chromium,
+///   win: BrowserWindowsConfig {
+///     paths: vec![PathBuf::from("/path/to/my/browser/executable")],
+///     registry_keys: vec![],
+///   },
+///   unix: vec!["my_browser", "my_browser-browser"],
+///   mac: vec![PathBuf::from("/Applications/My Browser.app/Contents/MacOS/my_browser")],
+/// })?;
+///
+/// // This will block the thread until the window is closed
+/// win.create()?;
+/// ```
 #[derive(Debug)]
 pub struct Window {
   created: bool,
@@ -193,7 +320,8 @@ impl Window {
   pub fn disable_hardware_acceleration(&mut self) -> Result<(), CrowserError> {
     if self.created {
       return Err(CrowserError::DoAfterCreate(
-        "Initialization script will have no effect if window is already created".to_string(),
+        "Changing hardware acceleration will have no effect if window is already created"
+          .to_string(),
       ));
     }
 
@@ -206,7 +334,8 @@ impl Window {
   pub fn set_firefox_config(&mut self, config: FirefoxConfig) -> Result<(), CrowserError> {
     if self.created {
       return Err(CrowserError::DoAfterCreate(
-        "Initialization script will have no effect if window is already created".to_string(),
+        "Changing Firefox-specific configuration will have no effect if window is already created"
+          .to_string(),
       ));
     }
 
@@ -219,7 +348,8 @@ impl Window {
   pub fn set_chromium_config(&mut self, config: ChromiumConfig) -> Result<(), CrowserError> {
     if self.created {
       return Err(CrowserError::DoAfterCreate(
-        "Initialization script will have no effect if window is already created".to_string(),
+        "Changing Chromium-specific configuration will have no effect if window is already created"
+          .to_string(),
       ));
     }
 
@@ -240,6 +370,9 @@ impl Window {
 
         if let Ok(webserver) = webserver {
           loop {
+            // Small delay to prevent a tight loop
+            std::thread::sleep(std::time::Duration::from_millis(1));
+
             if let Ok(WebserverMessage::Kill) = w_rx.try_recv() {
               break;
             }

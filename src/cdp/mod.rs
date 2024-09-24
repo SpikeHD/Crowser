@@ -159,6 +159,9 @@ pub fn ws_executor(
   }?;
 
   loop {
+    // Small delay to prevent a tight loop
+    std::thread::sleep(std::time::Duration::from_millis(1));
+
     // This is non-blocking so it should be fine
     let msg = match ws.read() {
       Ok(val) => val,
