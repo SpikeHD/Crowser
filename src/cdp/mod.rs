@@ -35,7 +35,7 @@ impl CDPMessageInternal {
   }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct CDPMessenger {
   tx: flume::Sender<String>,
   rx: flume::Receiver<String>,
@@ -52,7 +52,7 @@ struct CDPIpcManager {
   events: Vec<CDPCommand>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Cdp {
   cmd_id: u64,
   cmd: CDPMessenger,
@@ -173,16 +173,16 @@ impl Cdp {
     Ok(manager.events.clone())
   }
 
-  // pub fn last_event_by_name(&mut self, name: &str) -> Result<Option<CDPCommand>, CrowserError> {
-  //   let events = self.events()?;
+  pub fn last_event_by_name(&mut self, name: &str) -> Result<Option<CDPCommand>, CrowserError> {
+    let events = self.events()?;
 
-  //   for event in events.iter() {
-  //     if event.method == name {
-  //       return Ok(Some(event.clone()));
-  //     }
-  //   }
-  //   Ok(None)
-  // }
+    for event in events.iter().rev() {
+      if event.method == name {
+        return Ok(Some(event.clone()));
+      }
+    }
+    Ok(None)
+  }
 
   // pub fn all_events_by_name(&mut self, name: &str) -> Result<Vec<CDPCommand>, CrowserError> {
   //   let events = self.events();

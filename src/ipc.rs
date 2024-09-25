@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fmt::Debug};
+use std::{collections::HashMap, fmt::Debug, sync::{Arc, Mutex}};
 
 use serde_json::Value;
 
@@ -7,29 +7,33 @@ use crate::{
     self,
     commands::{CDPCommand, RuntimeEvaluate, TargetAttachToTarget, TargetGetTargets},
     Cdp,
-  },
-  error::CrowserError,
-  util::javascript::IPC_JS,
+  }, error::CrowserError, util::javascript::IPC_JS
 };
 
+#[derive(Clone)]
 pub struct BrowserIpc {
-  cdp: Cdp,
+  cdp: Arc<Mutex<Cdp>>,
   session_id: String,
   attached: bool,
 
-  commands: HashMap<String, Box<dyn Fn(Value) -> Result<Value, CrowserError> + Send + Sync>>,
+  commands: Arc<Mutex<HashMap<String, Box<dyn Fn(Value) -> Result<Value, CrowserError> + Send + Sync>>>>,
+  listeners: Arc<Mutex<HashMap<String, Vec<Box<dyn Fn(Value) -> Result<Value, CrowserError> + Send + Sync>>>>>,
 }
 
 impl Debug for BrowserIpc {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     // We can't properly debug Box<dyn FN> so we just show the keys, which is certainly better than nothing
-    let keys = self.commands.keys().collect::<Vec<&String>>();
+    let c_map = self.commands.lock().unwrap();
+    let l_map = self.listeners.lock().unwrap();
+    let c_keys = c_map.keys().collect::<Vec<&String>>();
+    let l_keys = l_map.keys().collect::<Vec<&String>>();
 
     f.debug_struct("BrowserIpc")
       .field("cdp", &self.cdp)
       .field("session_id", &self.session_id)
       .field("attached", &self.attached)
-      .field("commands", &keys)
+      .field("commands", &c_keys)
+      .field("listeners", &l_keys)
       .finish()
   }
 }
@@ -38,17 +42,18 @@ impl BrowserIpc {
   pub fn new(port: u16) -> Result<Self, CrowserError> {
     let cdp = cdp::launch(port)?;
     let mut ipc = BrowserIpc {
-      cdp,
+      cdp: Arc::new(Mutex::new(cdp)),
       session_id: String::new(),
       attached: false,
 
-      commands: HashMap::new(),
+      commands: Arc::new(Mutex::new(HashMap::new())),
+      listeners: Arc::new(Mutex::new(HashMap::new())),
     };
 
     ipc.attach()?;
+    ipc.event_loop()?;
 
-    // Once attached we need to inject the IPC script
-    ipc.eval(IPC_JS)?;
+    ipc.inject();
 
     Ok(ipc)
   }
@@ -58,10 +63,11 @@ impl BrowserIpc {
   // }
 
   pub fn attach(&mut self) -> Result<(), CrowserError> {
+    let mut cdp = self.cdp.lock().unwrap();
     // Get targets
     let t_params = TargetGetTargets {};
     let t_cmd = CDPCommand::new("Target.getTargets", t_params, None);
-    let result = self.cdp.send(t_cmd, None)?;
+    let result = cdp.send(t_cmd, None)?;
     let result = result.get("result");
 
     let targets = match result {
@@ -92,10 +98,10 @@ impl BrowserIpc {
           flatten: true,
         };
         let t_cmd = CDPCommand::new("Target.attachToTarget", t_params, None);
-        self.cdp.send(t_cmd, None)?;
+        cdp.send(t_cmd, None)?;
 
         // This triggers the Target.attachedToTarget event
-        let evt_result = self.cdp.wait_for_event("Target.attachedToTarget", None)?;
+        let evt_result = cdp.wait_for_event("Target.attachedToTarget", None)?;
         let evt_result = evt_result.params.get("sessionId");
 
         if let Some(session_id) = evt_result {
@@ -113,9 +119,65 @@ impl BrowserIpc {
       serde_json::Value::Null,
       Some(self.session_id.clone()),
     );
-    self.cdp.send(cmd, None)?;
+    cdp.send(cmd, None)?;
 
     self.attached = true;
+
+    Ok(())
+  }
+
+  fn inject(&mut self) {
+    self.eval(IPC_JS).unwrap_or_default();
+  }
+
+  /// Non-blocking event loop for tracking CDP events
+  fn event_loop(&mut self) -> Result<(), CrowserError> {
+    let root_ipc = Arc::new(Mutex::new(self.clone()));
+
+    std::thread::spawn(move || {
+      let mut last_context_create_uid = String::new();
+    
+      loop {
+        std::thread::sleep(std::time::Duration::from_millis(10));
+
+        let ipc = match root_ipc.try_lock() {
+          Ok(val) => val,
+          Err(_) => continue,
+        };
+        let mut cdp = match ipc.cdp.try_lock() {
+          Ok(val) => val,
+          Err(_) => continue,
+        };
+        // let listeners = match ipc.listeners.try_lock() {
+        //   Ok(val) => val,
+        //   Err(_) => continue,
+        // };
+
+        let refresh = cdp.last_event_by_name("Runtime.executionContextCreated");
+
+        // Drop these explicitly now to ensure the lock is available for the next event
+        drop(cdp);
+        drop(ipc);
+
+        if let Ok(Some(evt)) = refresh {
+          let uid = evt.params["context"]["uniqueId"].as_str().unwrap_or_default();
+
+          if uid != last_context_create_uid {
+            last_context_create_uid = uid.to_string();
+
+            println!("New context created: {}", uid);
+
+            // We don't use try_lock here because we WANT to ensure this is the only thread accessing the IPC when we need to reinject
+            let mut ipc = root_ipc.lock().unwrap();
+
+            println!("Got IPC, injecting");
+
+            // We need to reinject because a new context has been created
+            ipc.inject();
+          }
+        }
+      }
+    });
 
     Ok(())
   }
@@ -132,11 +194,13 @@ impl BrowserIpc {
   pub fn eval(&mut self, script: impl AsRef<str>) -> Result<Value, CrowserError> {
     self.wait_until_attached()?;
 
+    let mut cdp = self.cdp.lock().unwrap();
     let params = RuntimeEvaluate {
       expression: script.as_ref().to_string(),
+      await_promise: Some(true)
     };
     let cmd = CDPCommand::new("Runtime.evaluate", params, Some(self.session_id.clone()));
-    let result = self.cdp.send(cmd, None)?;
+    let result = cdp.send(cmd, None)?;
     let res_type = result["result"]["type"].as_str().unwrap_or_default();
 
     if ["string", "number", "boolean", "bigint", "symbol"].contains(&res_type) {
@@ -155,13 +219,15 @@ impl BrowserIpc {
   }
 
   pub fn register_command(&mut self, name: impl AsRef<str>, callback: Box<dyn Fn(Value) -> Result<Value, CrowserError> + Send + Sync>) -> Result<(), CrowserError> {
+    let mut commands = self.commands.lock().unwrap();
+
     // Check if command already exists
-    if self.commands.contains_key(name.as_ref()) {
+    if commands.contains_key(name.as_ref()) {
       // Throw error
       return Err(CrowserError::IpcError("Command already exists".to_string()));
     }
 
-    self.commands.insert(name.as_ref().to_string(), callback);
+    commands.insert(name.as_ref().to_string(), callback);
 
     Ok(())
   }
