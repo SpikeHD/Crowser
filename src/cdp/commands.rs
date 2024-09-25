@@ -48,7 +48,7 @@ impl Display for CDPCommand {
 
 #[derive(Serialize, Deserialize)]
 pub struct CDPResponse {
-  pub id: Option<u64>,
+  pub id: Option<usize>,
   pub result: Option<serde_json::Value>,
 }
 

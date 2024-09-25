@@ -16,7 +16,7 @@ pub mod commands;
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct CDPMessageInternal {
-  id: u64,
+  id: usize,
   method: String,
   #[serde(skip_serializing_if = "Value::is_null")]
   params: serde_json::Value,
@@ -25,7 +25,7 @@ struct CDPMessageInternal {
 }
 
 impl CDPMessageInternal {
-  fn new(id: u64, cmd: CDPCommand) -> Self {
+  fn new(id: usize, cmd: CDPCommand) -> Self {
     CDPMessageInternal {
       id,
       method: cmd.method,
@@ -54,16 +54,11 @@ struct CDPIpcManager {
 
 #[derive(Debug, Clone)]
 pub struct Cdp {
-  cmd_id: u64,
+  cmd_id: usize,
   cmd: CDPMessenger,
   manager: Arc<Mutex<CDPIpcManager>>,
 }
 
-/// TODO: Lots needs to be done here:
-///
-/// - Create two message queues, one for command results and one for events
-/// - Enforce syncronization of the command results (ie if two are run in succession, they may desync)
-///   - This will probs be done by using a hashmap to store command IDs and results and such. Thank you CDP for providing those IDs lol
 impl Cdp {
   pub fn new() -> Self {
     let (cmd_tx, cmd_rx) = flume::unbounded();

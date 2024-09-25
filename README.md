@@ -13,8 +13,9 @@
 
 ## Main features
 
-* ~1MB binary size with minimal dependencies (except for the browser, of course!)
-* Multi-platform. Supports Windows, macOS, and Linux.
+* Single-digit binary size with minimal dependencies (except for the browser, of course!)
+* Multi-platform. Supports Windows, macOS, and Linux. Even on ARM!
+* Two-way IPC.
 * Support for both local and remote websites.
 * Maximizes performance of whatever browser is chosen, and uses an entirely separate browser profile.
 
