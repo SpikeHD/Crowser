@@ -1,3 +1,9 @@
+use std::{
+  collections::HashMap,
+  sync::{Arc, Mutex},
+  vec,
+};
+
 use commands::CDPCommand;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -34,11 +40,21 @@ struct CDPMessenger {
   rx: flume::Receiver<String>,
 }
 
+#[derive(Debug, Clone)]
+struct CDPMessage {
+  result: Value,
+}
+
+#[derive(Debug, Clone)]
+struct CDPIpcManager {
+  session_messages: HashMap<String, CDPMessage>,
+  events: Vec<CDPCommand>,
+}
+
 pub struct Cdp {
   cmd_id: u64,
-
   cmd: CDPMessenger,
-  ws: CDPMessenger,
+  manager: Arc<Mutex<CDPIpcManager>>,
 }
 
 /// TODO: Lots needs to be done here:
@@ -49,7 +65,6 @@ pub struct Cdp {
 impl Cdp {
   pub fn new() -> Self {
     let (cmd_tx, cmd_rx) = flume::unbounded();
-    let (ws_tx, ws_rx) = flume::unbounded();
 
     Cdp {
       cmd_id: 0,
@@ -57,10 +72,10 @@ impl Cdp {
         tx: cmd_tx,
         rx: cmd_rx,
       },
-      ws: CDPMessenger {
-        tx: ws_tx,
-        rx: ws_rx,
-      },
+      manager: Arc::new(Mutex::new(CDPIpcManager {
+        session_messages: HashMap::new(),
+        events: Vec::new(),
+      })),
     }
   }
 
@@ -86,9 +101,9 @@ impl Cdp {
     }
 
     let rx = self.cmd.rx.clone();
-    let tx = self.ws.tx.clone();
+    let manager = self.manager.clone();
 
-    std::thread::spawn(move || ws_executor(ws_url, tx, rx));
+    std::thread::spawn(move || ws_executor(manager, ws_url, rx));
 
     Ok(())
   }
@@ -106,6 +121,7 @@ impl Cdp {
     cmd: CDPCommand,
     timeout: Option<std::time::Duration>,
   ) -> Result<Value, CrowserError> {
+    let manager = self.manager.clone();
     let msg = serde_json::to_string(&CDPMessageInternal::new(self.cmd_id + 1, cmd));
     let msg = msg.map_err(|e| {
       CrowserError::CDPError("Could not serialize message: ".to_string() + &e.to_string())
@@ -117,19 +133,29 @@ impl Cdp {
       CrowserError::CDPError("Could not send message: ".to_string() + &e.to_string())
     })?;
 
-    let rx = self.ws.rx.clone();
-
+    let id = self.cmd_id;
     // Wait for response to be recieved
     let wait_thread = std::thread::spawn(move || {
       let timeout = timeout.unwrap_or(std::time::Duration::from_secs(1));
+      let now = std::time::Instant::now();
 
-      if let Ok(val) = rx.recv_timeout(timeout) {
-        return Ok(serde_json::from_str(&val).unwrap_or_default());
+      // Wait for a response in the manager using try_lock and the timeout
+      loop {
+        match manager.try_lock() {
+          Ok(manager) => {
+            if let Some(msg) = manager.session_messages.get(&id.to_string()) {
+              return Ok(msg.result.clone());
+            }
+          }
+          Err(_) => std::thread::sleep(std::time::Duration::from_millis(100)),
+        }
+
+        if now.elapsed().as_millis() > timeout.as_millis() {
+          return Err(CrowserError::CDPError(
+            "Timeout waiting for response".to_string(),
+          ));
+        }
       }
-
-      Err(CrowserError::CDPError(
-        "Timeout waiting for response".to_string(),
-      ))
     });
 
     match wait_thread.join() {
@@ -137,11 +163,69 @@ impl Cdp {
       Err(err) => Err(err.into()),
     }
   }
+
+  pub fn events(&mut self) -> Result<Vec<CDPCommand>, CrowserError> {
+    let manager = self.manager.clone();
+    let manager = manager.lock().unwrap();
+
+    Ok(manager.events.clone())
+  }
+
+  pub fn last_event_by_name(&mut self, name: &str) -> Result<Option<CDPCommand>, CrowserError> {
+    let events = self.events()?;
+
+    for event in events.iter() {
+      if event.method == name {
+        return Ok(Some(event.clone()));
+      }
+    }
+    Ok(None)
+  }
+
+  pub fn all_events_by_name(&mut self, name: &str) -> Result<Vec<CDPCommand>, CrowserError> {
+    let events = self.events();
+    let mut new_events = vec![];
+
+    for event in events? {
+      if event.method == name {
+        new_events.push(event);
+      }
+    }
+
+    Ok(new_events)
+  }
+
+  pub fn wait_for_event(
+    &mut self,
+    name: &str,
+    timeout: Option<std::time::Duration>,
+  ) -> Result<CDPCommand, CrowserError> {
+    let timeout = timeout.unwrap_or(std::time::Duration::from_secs(1));
+    let now = std::time::Instant::now();
+
+    loop {
+      let events = self.events()?;
+
+      for event in events.iter() {
+        if event.method == name {
+          return Ok(event.clone());
+        }
+      }
+
+      std::thread::sleep(std::time::Duration::from_millis(100));
+
+      if timeout.as_millis() > 0 && now.elapsed().as_millis() > timeout.as_millis() {
+        return Err(CrowserError::CDPError(
+          "Timeout waiting for event".to_string(),
+        ));
+      }
+    }
+  }
 }
 
-pub fn ws_executor(
+fn ws_executor(
+  manager: Arc<Mutex<CDPIpcManager>>,
   url: impl AsRef<str>,
-  tx: flume::Sender<String>,
   rx: flume::Receiver<String>,
 ) -> Result<(), CrowserError> {
   let (mut ws, _) = match tungstenite::connect(url.as_ref()) {
@@ -179,7 +263,17 @@ pub fn ws_executor(
 
     if !msg.is_empty() {
       println!("<- {}", msg);
-      tx.send(msg.to_string())?;
+      let mut messages = manager.lock().unwrap();
+      let msg: Value = serde_json::from_str(&msg.to_string()).unwrap();
+
+      // If it doesn't have an ID, it's an event, otherwise it's a response
+      if msg["id"].is_null() {
+        messages.events.push(CDPCommand::from(msg.to_string()));
+      } else {
+        messages
+          .session_messages
+          .insert(msg["id"].to_string(), CDPMessage { result: msg });
+      }
     }
   }
 }

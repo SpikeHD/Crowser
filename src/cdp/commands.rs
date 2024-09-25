@@ -10,7 +10,7 @@ use std::fmt::Display;
 use serde::{Deserialize, Serialize};
 
 // "Master" struct that handles the structure of all commands
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CDPCommand {
   pub method: String,

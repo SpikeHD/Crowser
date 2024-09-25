@@ -69,12 +69,13 @@ impl BrowserIpc {
           flatten: true,
         };
         let t_cmd = CDPCommand::new("Target.attachToTarget", t_params, None);
-        let result = self.cdp.send(t_cmd, None)?;
-        // This returns as CDPCommand
-        let result = CDPCommand::from(result.to_string());
-        let session_id = result.params.get("sessionId");
+        self.cdp.send(t_cmd, None)?;
 
-        if let Some(session_id) = session_id {
+        // This triggers the Target.attachedToTarget event
+        let evt_result = self.cdp.wait_for_event("Target.attachedToTarget", None)?;
+        let evt_result = evt_result.params.get("sessionId");
+
+        if let Some(session_id) = evt_result {
           self.session_id = session_id.as_str().unwrap_or_default().to_string();
           break;
         }
