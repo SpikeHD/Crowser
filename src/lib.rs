@@ -62,28 +62,24 @@ fn main() -> Result<(), CrowserError> {
 
   // include_dir is a re-export of the include_dir crate
   let dir = include_dir::include_dir!("/path/to/your/app/dist");
+  let config = LocalConfig {
+    port,
+    directory: dir.clone(),
+  };
 
-  // To be safe, we'll try to find an open port between 9000 and 9999
-  for port in 9000..9999 {
-    let config = LocalConfig {
-      port,
-      directory: dir.clone(),
-    };
+  let mut window = Window::new(config, None, profile_dir.clone())?;
 
-    let mut window = Window::new(config, None, profile_dir.clone())?;
+  window.clean_profile()?;
 
-    window.clean_profile()?;
-
-    // Since we're looping, we'll break when we successfully create the window. This will
-    // actually block the thread until the window is closed.
-    match window.create() {
-      Ok(_) => {
-        println!("Window created on port {}", port);
-        break;
-      }
-      Err(e) => {
-        println!("Error creating window on port {}: {:?}", port, e);
-      }
+  // Since we're looping, we'll break when we successfully create the window. This will
+  // actually block the thread until the window is closed.
+  match window.create() {
+    Ok(_) => {
+      println!("Window created on port {}", port);
+      break;
+    }
+    Err(e) => {
+      println!("Error creating window on port {}: {:?}", port, e);
     }
   }
 
