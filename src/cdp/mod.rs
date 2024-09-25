@@ -255,14 +255,12 @@ fn ws_executor(
     let cmd = rx.try_recv().unwrap_or_default();
 
     if !cmd.is_empty() {
-      println!("-> {}", cmd);
       ws.send(cmd.into()).map_err(|e| {
         CrowserError::CDPError("Could not send command: ".to_string() + &e.to_string())
       })?;
     }
 
     if !msg.is_empty() {
-      println!("<- {}", msg);
       let mut messages = manager.lock().unwrap();
       let msg: Value = serde_json::from_str(&msg.to_string()).unwrap();
 

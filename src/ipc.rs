@@ -101,13 +101,11 @@ impl BrowserIpc {
     };
     let cmd = CDPCommand::new("Runtime.evaluate", params, Some(self.session_id.clone()));
     let result = self.cdp.send(cmd, None)?;
-    let result = match result.get("result") {
+    let result = match result["result"]["result"].get("value") {
       Some(val) => val,
       None => return Err(CrowserError::CDPError("No result found".to_string())),
     };
 
-    let value = result.get("value").unwrap_or(&serde_json::Value::Null);
-    let value = value.as_str().unwrap_or_default();
-    Ok(value.to_string())
+    Ok(result.to_string())
   }
 }
