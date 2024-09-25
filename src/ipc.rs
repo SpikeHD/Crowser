@@ -8,7 +8,8 @@ use crate::{
     commands::{CDPCommand, RuntimeEvaluate, TargetAttachToTarget, TargetGetTargets},
     Cdp,
   },
-  error::CrowserError, util::javascript::IPC_JS,
+  error::CrowserError,
+  util::javascript::IPC_JS,
 };
 
 #[derive(Debug)]
@@ -48,7 +49,11 @@ impl BrowserIpc {
 
     let targets = match result {
       Some(val) => val,
-      None => return Err(CrowserError::CDPError("Attach: No result found".to_string())),
+      None => {
+        return Err(CrowserError::CDPError(
+          "Attach: No result found".to_string(),
+        ))
+      }
     };
 
     let targets = match targets.get("targetInfos") {
@@ -99,6 +104,7 @@ impl BrowserIpc {
   }
 
   pub fn wait_until_attached(&mut self) -> Result<(), CrowserError> {
+    #[allow(clippy::while_immutable_condition)]
     while !self.attached {
       std::thread::sleep(std::time::Duration::from_millis(100));
     }
@@ -119,10 +125,15 @@ impl BrowserIpc {
     if ["string", "number", "boolean", "bigint", "symbol"].contains(&res_type) {
       match result["result"]["result"].get("value") {
         Some(val) => val,
-        None => return Err(CrowserError::CDPError(format!("Eval: No result found in object: {:?}", result))),
+        None => {
+          return Err(CrowserError::CDPError(format!(
+            "Eval: No result found in object: {:?}",
+            result
+          )))
+        }
       };
     }
-    
+
     Ok(Value::Null)
   }
 }
