@@ -1,4 +1,4 @@
-use std::fmt::Debug;
+use std::{collections::HashMap, fmt::Debug};
 
 use serde_json::Value;
 
@@ -12,11 +12,26 @@ use crate::{
   util::javascript::IPC_JS,
 };
 
-#[derive(Debug)]
 pub struct BrowserIpc {
   cdp: Cdp,
   session_id: String,
   attached: bool,
+
+  commands: HashMap<String, Box<dyn Fn(Value) -> Result<Value, CrowserError> + Send + Sync>>,
+}
+
+impl Debug for BrowserIpc {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    // We can't properly debug Box<dyn FN> so we just show the keys, which is certainly better than nothing
+    let keys = self.commands.keys().collect::<Vec<&String>>();
+
+    f.debug_struct("BrowserIpc")
+      .field("cdp", &self.cdp)
+      .field("session_id", &self.session_id)
+      .field("attached", &self.attached)
+      .field("commands", &keys)
+      .finish()
+  }
 }
 
 impl BrowserIpc {
@@ -26,6 +41,8 @@ impl BrowserIpc {
       cdp,
       session_id: String::new(),
       attached: false,
+
+      commands: HashMap::new(),
     };
 
     ipc.attach()?;
@@ -135,5 +152,17 @@ impl BrowserIpc {
     }
 
     Ok(Value::Null)
+  }
+
+  pub fn register_command(&mut self, name: impl AsRef<str>, callback: Box<dyn Fn(Value) -> Result<Value, CrowserError> + Send + Sync>) -> Result<(), CrowserError> {
+    // Check if command already exists
+    if self.commands.contains_key(name.as_ref()) {
+      // Throw error
+      return Err(CrowserError::IpcError("Command already exists".to_string()));
+    }
+
+    self.commands.insert(name.as_ref().to_string(), callback);
+
+    Ok(())
   }
 }

@@ -5,6 +5,7 @@ use crate::webserver::WebserverMessage;
 #[derive(Debug)]
 pub enum CrowserError {
   Generic(Box<dyn Any + Send>),
+  IpcError(String),
   IoError(std::io::Error),
   WebserverSendError(std::sync::mpsc::SendError<WebserverMessage>),
   WebserverRecvError(std::sync::mpsc::RecvError),
@@ -82,6 +83,7 @@ impl std::fmt::Display for CrowserError {
   fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
     match self {
       CrowserError::Generic(err) => write!(f, "Generic error: {:?}", err),
+      CrowserError::IpcError(err) => write!(f, "IPC error: {}", err),
       CrowserError::IoError(err) => write!(f, "IO Error: {}", err),
       CrowserError::WebserverSendError(err) => write!(f, "Webserver send error: {}", err),
       CrowserError::WebserverRecvError(err) => write!(f, "Webserver receive error: {}", err),
