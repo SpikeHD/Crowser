@@ -265,16 +265,13 @@ impl Window {
 
   /// Set the remote URL for the window, if it is configured to be remote.
   pub fn set_url(&mut self, url: impl AsRef<str>) -> Result<(), CrowserError> {
-    match &mut self.config {
-      ContentConfig::Remote(remote) => {
-        remote.url = url.as_ref().to_string();
-      }
-      _ => {},
+    if let ContentConfig::Remote(remote) = &mut self.config {
+      remote.url = url.as_ref().to_string();
     }
 
     let ipc = self.get_ipc();
     let mut ipc = ipc.lock().unwrap();
-    
+
     if let Some(ipc) = ipc.as_mut() {
       // TODO this feels wack, there is probably a CDP way to do this
       ipc.eval(format!("window.location.href = '{}'", url.as_ref()))?;

@@ -201,15 +201,16 @@ impl Cdp {
     let now = std::time::Instant::now();
 
     loop {
-      let events = self.events()?;
+      std::thread::sleep(std::time::Duration::from_millis(100));
 
-      for event in events.iter() {
-        if event.method == name {
+      let mut events = self.events()?;
+
+      for event in events.iter_mut() {
+        if event.method == name && !event.seen {
+          event.seen = true;
           return Ok(event.clone());
         }
       }
-
-      std::thread::sleep(std::time::Duration::from_millis(100));
 
       if timeout.as_millis() > 0 && now.elapsed().as_millis() > timeout.as_millis() {
         return Err(CrowserError::CDPError(

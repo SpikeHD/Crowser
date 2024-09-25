@@ -16,6 +16,7 @@ pub struct CDPCommand {
   pub method: String,
   pub params: serde_json::Value,
   pub session_id: Option<String>,
+  pub seen: bool,
 }
 
 impl CDPCommand {
@@ -24,6 +25,7 @@ impl CDPCommand {
       method: method.as_ref().to_string(),
       params: serde_json::to_value(params).unwrap(),
       session_id,
+      seen: false,
     }
   }
 }

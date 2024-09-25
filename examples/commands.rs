@@ -32,12 +32,13 @@ fn main() -> Result<(), CrowserError> {
     }
 
     ipc
-    .register_command(
-      "hello",
-      Box::new(|_| {
-        println!("Got hello command");
-        Ok(serde_json::json!("Hello from Crowser!"))
-      }))
+      .register_command(
+        "hello",
+        Box::new(|_| {
+          println!("Got hello command");
+          Ok(serde_json::json!("Hello from Crowser!"))
+        }),
+      )
       .unwrap_or_default();
 
     std::thread::sleep(std::time::Duration::from_secs(1));
