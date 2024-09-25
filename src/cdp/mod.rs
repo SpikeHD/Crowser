@@ -171,29 +171,29 @@ impl Cdp {
     Ok(manager.events.clone())
   }
 
-  pub fn last_event_by_name(&mut self, name: &str) -> Result<Option<CDPCommand>, CrowserError> {
-    let events = self.events()?;
+  // pub fn last_event_by_name(&mut self, name: &str) -> Result<Option<CDPCommand>, CrowserError> {
+  //   let events = self.events()?;
 
-    for event in events.iter() {
-      if event.method == name {
-        return Ok(Some(event.clone()));
-      }
-    }
-    Ok(None)
-  }
+  //   for event in events.iter() {
+  //     if event.method == name {
+  //       return Ok(Some(event.clone()));
+  //     }
+  //   }
+  //   Ok(None)
+  // }
 
-  pub fn all_events_by_name(&mut self, name: &str) -> Result<Vec<CDPCommand>, CrowserError> {
-    let events = self.events();
-    let mut new_events = vec![];
+  // pub fn all_events_by_name(&mut self, name: &str) -> Result<Vec<CDPCommand>, CrowserError> {
+  //   let events = self.events();
+  //   let mut new_events = vec![];
 
-    for event in events? {
-      if event.method == name {
-        new_events.push(event);
-      }
-    }
+  //   for event in events? {
+  //     if event.method == name {
+  //       new_events.push(event);
+  //     }
+  //   }
 
-    Ok(new_events)
-  }
+  //   Ok(new_events)
+  // }
 
   pub fn wait_for_event(
     &mut self,
