@@ -165,12 +165,8 @@ impl BrowserIpc {
           if uid != last_context_create_uid {
             last_context_create_uid = uid.to_string();
 
-            println!("New context created: {}", uid);
-
-            // We don't use try_lock here because we WANT to ensure this is the only thread accessing the IPC when we need to reinject
+            // We don't use try_lock here because we NEED to ensure IPC is reinjected right now
             let mut ipc = root_ipc.lock().unwrap();
-
-            println!("Got IPC, injecting");
 
             // We need to reinject because a new context has been created
             ipc.inject();
