@@ -67,11 +67,7 @@ impl BrowserIpc {
     Ok(ipc)
   }
 
-  // fn get_tab(&self) -> Result<Arc<Tab>, CrowserError> {
-  //   // TODO
-  // }
-
-  pub fn attach(&mut self) -> Result<(), CrowserError> {
+  fn attach(&mut self) -> Result<(), CrowserError> {
     let mut cdp = self.cdp.lock().unwrap();
     // Get targets
     let t_params = TargetGetTargets {};
@@ -239,6 +235,32 @@ impl BrowserIpc {
     }
 
     commands.insert(name.as_ref().to_string(), vec![callback]);
+
+    Ok(())
+  }
+
+  pub fn listen(
+    &mut self,
+    name: impl AsRef<str>,
+    callback: Box<dyn Fn(Value) -> Result<Value, CrowserError> + Send + Sync>,
+  ) -> Result<(), CrowserError> {
+    let mut listeners = self.listeners.lock().unwrap();
+
+    // Check if command already exists
+    if listeners.contains_key(name.as_ref()) {
+      return Err(CrowserError::IpcError(
+        "Listener already exists".to_string(),
+      ));
+    }
+
+    let callbacks = listeners.get_mut(name.as_ref());
+
+    if let Some(callbacks) = callbacks {
+      callbacks.push(callback);
+      return Ok(());
+    }
+
+    listeners.insert(name.as_ref().to_string(), vec![callback]);
 
     Ok(())
   }

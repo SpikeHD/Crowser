@@ -76,9 +76,9 @@ if (!window.__CROWSER) {
     }
   }
 
-  function wait(ms) {
-    return new Promise((r) => setTimeout(r, ms));
-  }
-
   window.__CROWSER.ipc._consume()
+}
+
+function wait(ms) {
+  return new Promise((r) => setTimeout(r, ms))
 }
