@@ -110,7 +110,7 @@ use shared_child::SharedChild;
 pub mod browser;
 mod cdp;
 pub mod error;
-mod ipc;
+pub mod ipc;
 mod util;
 mod webserver;
 
@@ -269,14 +269,17 @@ impl Window {
       ContentConfig::Remote(remote) => {
         remote.url = url.as_ref().to_string();
       }
-      _ => {
-        return Err(CrowserError::DoAfterCreate(
-          "Cannot set URL after window is created".to_string(),
-        ))
-      }
+      _ => {},
     }
 
-    // TODO If we are already created, we need to send the signal to the window to change the URL
+    let ipc = self.get_ipc();
+    let mut ipc = ipc.lock().unwrap();
+    
+    if let Some(ipc) = ipc.as_mut() {
+      // TODO this feels wack, there is probably a CDP way to do this
+      ipc.eval(format!("window.location.href = '{}'", url.as_ref()))?;
+    }
+
     Ok(())
   }
 
@@ -405,8 +408,6 @@ impl Window {
     }
 
     let browser_path = browser_path.unwrap();
-
-    // TODO this needs to provide CLI options and crap
     let mut cmd: std::process::Command = std::process::Command::new(browser_path);
     let mut args = match self.browser.kind {
       BrowserKind::Chromium => browser::chromium::generate_cli_options(self),
@@ -441,7 +442,6 @@ impl Window {
       signal_hook::flag::register(*signal, terminated)?;
     }
 
-    // TODO create like an event handler and stuff
     loop {
       std::thread::sleep(std::time::Duration::from_secs(1));
 
