@@ -1,24 +1,21 @@
 use std::fmt::Debug;
 
+use serde_json::Value;
+
 use crate::{
   cdp::{
     self,
     commands::{CDPCommand, RuntimeEvaluate, TargetAttachToTarget, TargetGetTargets},
     Cdp,
   },
-  error::CrowserError,
+  error::CrowserError, util::javascript::IPC_JS,
 };
 
+#[derive(Debug)]
 pub struct BrowserIpc {
   cdp: Cdp,
   session_id: String,
-}
-
-// Trait type so Browser can implement debug
-impl Debug for BrowserIpc {
-  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    write!(f, "BrowserIpc")
-  }
+  attached: bool,
 }
 
 impl BrowserIpc {
@@ -27,9 +24,13 @@ impl BrowserIpc {
     let mut ipc = BrowserIpc {
       cdp,
       session_id: String::new(),
+      attached: false,
     };
 
     ipc.attach()?;
+
+    // Once attached we need to inject the IPC script
+    ipc.eval(IPC_JS)?;
 
     Ok(ipc)
   }
@@ -47,7 +48,7 @@ impl BrowserIpc {
 
     let targets = match result {
       Some(val) => val,
-      None => return Err(CrowserError::CDPError("No result found".to_string())),
+      None => return Err(CrowserError::CDPError("Attach: No result found".to_string())),
     };
 
     let targets = match targets.get("targetInfos") {
@@ -92,20 +93,36 @@ impl BrowserIpc {
     );
     self.cdp.send(cmd, None)?;
 
+    self.attached = true;
+
     Ok(())
   }
 
-  pub fn eval(&mut self, script: &str) -> Result<String, CrowserError> {
+  pub fn wait_until_attached(&mut self) -> Result<(), CrowserError> {
+    while !self.attached {
+      std::thread::sleep(std::time::Duration::from_millis(100));
+    }
+
+    Ok(())
+  }
+
+  pub fn eval(&mut self, script: impl AsRef<str>) -> Result<Value, CrowserError> {
+    self.wait_until_attached()?;
+
     let params = RuntimeEvaluate {
-      expression: script.to_string(),
+      expression: script.as_ref().to_string(),
     };
     let cmd = CDPCommand::new("Runtime.evaluate", params, Some(self.session_id.clone()));
     let result = self.cdp.send(cmd, None)?;
-    let result = match result["result"]["result"].get("value") {
-      Some(val) => val,
-      None => return Err(CrowserError::CDPError("No result found".to_string())),
-    };
+    let res_type = result["result"]["type"].as_str().unwrap_or_default();
 
-    Ok(result.to_string())
+    if ["string", "number", "boolean", "bigint", "symbol"].contains(&res_type) {
+      match result["result"]["result"].get("value") {
+        Some(val) => val,
+        None => return Err(CrowserError::CDPError(format!("Eval: No result found in object: {:?}", result))),
+      };
+    }
+    
+    Ok(Value::Null)
   }
 }

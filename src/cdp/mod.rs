@@ -35,6 +35,7 @@ impl CDPMessageInternal {
   }
 }
 
+#[derive(Debug)]
 struct CDPMessenger {
   tx: flume::Sender<String>,
   rx: flume::Receiver<String>,
@@ -51,6 +52,7 @@ struct CDPIpcManager {
   events: Vec<CDPCommand>,
 }
 
+#[derive(Debug)]
 pub struct Cdp {
   cmd_id: u64,
   cmd: CDPMessenger,

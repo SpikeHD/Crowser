@@ -33,8 +33,8 @@ pub fn generate_cli_options(win: &Window) -> Vec<String> {
       ContentConfig::Remote(config) => {
         format!("--app={}", config.url)
       },
-      ContentConfig::Local(config) => {
-        format!("--app=http://localhost:{}", config.port)
+      ContentConfig::Local(_) => {
+        format!("--app=http://localhost:{}", win.webserver_port.unwrap())
       },
     },
 

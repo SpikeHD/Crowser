@@ -120,17 +120,20 @@ mod webserver;
 
 // Re-export the include_dir macro
 pub use include_dir;
+use util::port::get_available_port;
 use webserver::{Webserver, WebserverMessage};
 
 /// Firefox/Gecko-specific configuration options. These have no effect if the window is not a Firefox window.
 #[derive(Debug)]
 pub struct FirefoxConfig {
+  /// Custom Firefox CSS to apply to the window (NOT the page!). See https://www.userchrome.org/ for more details
   pub custom_css: Option<String>,
 }
 
 /// Chromium-specific configuration options. These have no effect if the window is not a Chromium window.
 #[derive(Debug)]
 pub struct ChromiumConfig {
+  /// List of paths to unpacked extensions to load into the browser.
   pub extensions: Vec<PathBuf>,
 }
 
@@ -143,7 +146,6 @@ pub enum ContentConfig {
 /// Configuration for a local (i.e bundled) website/web app
 #[derive(Debug, Clone)]
 pub struct LocalConfig {
-  pub port: u16,
   pub directory: Dir<'static>,
 }
 
@@ -201,6 +203,8 @@ impl IntoContentConfig for RemoteConfig {
 pub struct Window {
   created: bool,
 
+  webserver_port: Option<u16>,
+
   config: ContentConfig,
   browser: Browser,
 
@@ -239,6 +243,8 @@ impl Window {
 
     Ok(Self {
       profile_directory,
+
+      webserver_port: None,
 
       process_handle: None,
 
@@ -362,11 +368,16 @@ impl Window {
   pub fn create(&mut self) -> Result<(), CrowserError> {
     self.created = true;
 
+    let port = get_available_port(Some(9000));
+    self.webserver_port = Some(port);
+
     let t_config = self.config.clone();
     let (w_tx, w_rx) = std::sync::mpsc::channel::<WebserverMessage>();
     let webserver_thread = std::thread::spawn(move || {
       if let ContentConfig::Local(config) = t_config {
-        let webserver = Webserver::new(config.port, config.directory);
+        let webserver = Webserver::new(port, config.directory);
+
+        println!("Webserver started on port {}", port);
 
         if let Ok(webserver) = webserver {
           loop {
@@ -408,7 +419,7 @@ impl Window {
         vec![]
       }
     };
-    let remote_debugging_port = util::port::get_available_port();
+    let remote_debugging_port = get_available_port(Some(8000));
 
     args.push("--remote-debugging-port=".to_string() + &remote_debugging_port.to_string());
 

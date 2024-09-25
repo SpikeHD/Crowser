@@ -25,8 +25,8 @@ pub fn generate_cli_options(win: &Window) -> Vec<String> {
     ContentConfig::Remote(config) => {
       options.push(config.url.clone());
     }
-    ContentConfig::Local(config) => {
-      options.push(format!("http://localhost:{}", config.port));
+    ContentConfig::Local(_) => {
+      options.push(format!("http://localhost:{}", win.webserver_port.unwrap()));
     }
   }
 
