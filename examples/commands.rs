@@ -17,9 +17,12 @@ fn main() -> Result<(), CrowserError> {
     let mut ipc = ipc.lock().unwrap();
 
     if let Some(ipc) = ipc.as_mut() {
-      ipc.register_command("hello", Box::new(|_| {
-        Ok(serde_json::json!("Hello from Crowser!"))
-      })).unwrap_or_default();
+      ipc
+        .register_command(
+          "hello",
+          Box::new(|_| Ok(serde_json::json!("Hello from Crowser!"))),
+        )
+        .unwrap_or_default();
     }
 
     std::thread::sleep(std::time::Duration::from_secs(1));

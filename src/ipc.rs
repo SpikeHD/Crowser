@@ -1,4 +1,8 @@
-use std::{collections::HashMap, fmt::Debug, sync::{Arc, Mutex}};
+use std::{
+  collections::HashMap,
+  fmt::Debug,
+  sync::{Arc, Mutex},
+};
 
 use serde_json::Value;
 
@@ -7,8 +11,13 @@ use crate::{
     self,
     commands::{CDPCommand, RuntimeEvaluate, TargetAttachToTarget, TargetGetTargets},
     Cdp,
-  }, error::CrowserError, util::javascript::IPC_JS
+  },
+  error::CrowserError,
+  util::javascript::IPC_JS,
 };
+
+type IpcRegistrationMap =
+  Arc<Mutex<HashMap<String, Vec<Box<dyn Fn(Value) -> Result<Value, CrowserError> + Send + Sync>>>>>;
 
 #[derive(Clone)]
 pub struct BrowserIpc {
@@ -16,8 +25,8 @@ pub struct BrowserIpc {
   session_id: String,
   attached: bool,
 
-  commands: Arc<Mutex<HashMap<String, Box<dyn Fn(Value) -> Result<Value, CrowserError> + Send + Sync>>>>,
-  listeners: Arc<Mutex<HashMap<String, Vec<Box<dyn Fn(Value) -> Result<Value, CrowserError> + Send + Sync>>>>>,
+  commands: IpcRegistrationMap,
+  listeners: IpcRegistrationMap,
 }
 
 impl Debug for BrowserIpc {
@@ -136,7 +145,7 @@ impl BrowserIpc {
 
     std::thread::spawn(move || {
       let mut last_context_create_uid = String::new();
-    
+
       loop {
         std::thread::sleep(std::time::Duration::from_millis(10));
 
@@ -160,7 +169,9 @@ impl BrowserIpc {
         drop(ipc);
 
         if let Ok(Some(evt)) = refresh {
-          let uid = evt.params["context"]["uniqueId"].as_str().unwrap_or_default();
+          let uid = evt.params["context"]["uniqueId"]
+            .as_str()
+            .unwrap_or_default();
 
           if uid != last_context_create_uid {
             last_context_create_uid = uid.to_string();
@@ -193,7 +204,7 @@ impl BrowserIpc {
     let mut cdp = self.cdp.lock().unwrap();
     let params = RuntimeEvaluate {
       expression: script.as_ref().to_string(),
-      await_promise: Some(true)
+      await_promise: Some(true),
     };
     let cmd = CDPCommand::new("Runtime.evaluate", params, Some(self.session_id.clone()));
     let result = cdp.send(cmd, None)?;
@@ -214,7 +225,11 @@ impl BrowserIpc {
     Ok(Value::Null)
   }
 
-  pub fn register_command(&mut self, name: impl AsRef<str>, callback: Box<dyn Fn(Value) -> Result<Value, CrowserError> + Send + Sync>) -> Result<(), CrowserError> {
+  pub fn register_command(
+    &mut self,
+    name: impl AsRef<str>,
+    callback: Box<dyn Fn(Value) -> Result<Value, CrowserError> + Send + Sync>,
+  ) -> Result<(), CrowserError> {
     let mut commands = self.commands.lock().unwrap();
 
     // Check if command already exists
@@ -223,7 +238,7 @@ impl BrowserIpc {
       return Err(CrowserError::IpcError("Command already exists".to_string()));
     }
 
-    commands.insert(name.as_ref().to_string(), callback);
+    commands.insert(name.as_ref().to_string(), vec![callback]);
 
     Ok(())
   }
