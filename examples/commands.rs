@@ -44,7 +44,7 @@ fn main() -> Result<(), CrowserError> {
     std::thread::sleep(std::time::Duration::from_secs(1));
 
     // Eval some JS that calls that command
-    let result = ipc.eval("window.__CROWSER.ipc.invoke('hello')").unwrap();
+    let result = ipc.eval("window.__CROWSER.ipc.invoke('hello')").unwrap_or_default();
     println!("Result: {:?}", result);
   });
 

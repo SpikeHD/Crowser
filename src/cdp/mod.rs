@@ -206,8 +206,8 @@ impl Cdp {
       let mut events = self.events()?;
 
       for event in events.iter_mut() {
-        if event.method == name && !event.seen {
-          event.seen = true;
+        if event.method == name && !event.seen.unwrap_or(false) {
+          event.seen = Some(true);
           return Ok(event.clone());
         }
       }

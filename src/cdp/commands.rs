@@ -16,7 +16,7 @@ pub struct CDPCommand {
   pub method: String,
   pub params: serde_json::Value,
   pub session_id: Option<String>,
-  pub seen: bool,
+  pub seen: Option<bool>,
 }
 
 impl CDPCommand {
@@ -25,7 +25,7 @@ impl CDPCommand {
       method: method.as_ref().to_string(),
       params: serde_json::to_value(params).unwrap(),
       session_id,
-      seen: false,
+      seen: Some(false),
     }
   }
 }
@@ -84,6 +84,8 @@ pub struct RuntimeEvaluate {
   pub expression: String,
   #[serde(skip_serializing_if = "Option::is_none")]
   pub await_promise: Option<bool>,
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub return_by_value: Option<bool>,
 }
 
 #[derive(Serialize, Deserialize)]

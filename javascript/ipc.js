@@ -7,11 +7,7 @@ if (!window.__CROWSER) {
   window.__CROWSER.ipc = {
     // List of messages to send
     // id, cmd, args
-    outbound_invokes: {},
-
-    // List of events to send
-    // id, evt, payload
-    outbound_event: {},
+    outbound_invokes: [],
 
     // List of events to listen for
     // id, evt, callback
@@ -25,8 +21,28 @@ if (!window.__CROWSER) {
     // id, type, payload
     message_queue: [],
 
-    invoke: (cmd, args = []) => {
-      window.__CROWSER.ipc.outbound_invokes[generateUUID()] = { cmd, args }
+    invoke: (cmd, args = {}) => {
+      if (cmd === "") {
+        console.error("[Crowser IPC] Empty command")
+        return
+      }
+
+      if (typeof args !== "object") {
+        console.error("[Crowser IPC] Args must be an object")
+        return
+      }
+
+      let uuid = generateUUID()
+      window.__CROWSER.ipc.outbound_invokes.push({ uuid, cmd, args })
+
+      // Wait for a response
+      return new Promise(async (resolve, reject) => {
+        while (window.__CROWSER.ipc.inbound_invokes[uuid] === undefined) {
+          await wait(5)
+        }
+
+        window.__CROWSER.ipc.inbound_invokes[uuid].then(resolve).catch(reject)
+      })
     },
     event: {
       listen: (evt, callback) => {
@@ -73,6 +89,14 @@ if (!window.__CROWSER) {
           }
         }
       }
+    },
+
+    _backend_consume: () => {
+      return window.__CROWSER.ipc.outbound_invokes.shift()
+    },
+
+    _backend_respond: (uuid, result) => {
+      window.__CROWSER.ipc.inbound_invokes[uuid] = result
     }
   }
 
