@@ -202,7 +202,7 @@ impl BrowserIpc {
         );
         let result = match cdp.send(cmd, None) {
           Ok(val) => val,
-          Err(_) => continue
+          Err(_) => continue,
         };
         let result = result["result"]["result"].get("value");
 
@@ -219,12 +219,16 @@ impl BrowserIpc {
             let uuid = result.get("uuid");
 
             // Requires lock here because we are mutating the IPC array, we will never get the command again otherwise!
-            if let (Some(cmd), Some(args), Some(uuid), Ok(mut ipc)) = (cmd, args, uuid, root_ipc.lock()) {
+            if let (Some(cmd), Some(args), Some(uuid), Ok(mut ipc)) =
+              (cmd, args, uuid, root_ipc.lock())
+            {
               let cmd = cmd.as_str().unwrap_or_default();
               let uuid = uuid.as_str().unwrap_or_default();
 
               // We don't care about the result, we just want to make sure the command is handled
-              ipc.handle_command(cmd, args.clone(), uuid).unwrap_or_default();
+              ipc
+                .handle_command(cmd, args.clone(), uuid)
+                .unwrap_or_default();
 
               let mut cdp = ipc.cdp.lock().unwrap();
 
@@ -232,9 +236,13 @@ impl BrowserIpc {
               let cmd = CDPCommand::new(
                 "Runtime.evaluate",
                 RuntimeEvaluate {
-                  expression: format!("window.__CROWSER.ipc._backend_respond('{}', {})", uuid, args.to_string()),
+                  expression: format!(
+                    "window.__CROWSER.ipc._backend_respond('{}', {})",
+                    uuid,
+                    args
+                  ),
                   await_promise: Some(true),
-                  return_by_value: Some(true)
+                  return_by_value: Some(true),
                 },
                 Some(ipc.session_id.clone()),
               );
