@@ -87,6 +87,49 @@ fn main() -> Result<(), CrowserError> {
 }
 ```
 
+## Registering a command
+```rust
+use crowser::{error::CrowserError, ipc::BrowserIpc, RemoteConfig, Window};
+
+fn main() -> Result<(), CrowserError> {
+  let mut profile_dir = std::env::current_dir()?;
+  profile_dir.push("example_profiles");
+
+  let config = RemoteConfig {
+    url: "https://example.com".to_string(),
+  };
+
+  let mut window = Window::new(config, None, profile_dir)?;
+  let ipc = window.ipc();
+
+  window.clear_profile().unwrap_or_default();
+
+  std::thread::spawn(move || {
+    ipc.block_until_initialized().unwrap_or_default();
+
+    ipc
+      .register_command(
+        "hello",
+        Box::new(|_| {
+          println!("Got hello command");
+          Ok(serde_json::json!("Hello from Crowser!"))
+        }),
+      )
+      .unwrap_or_default();
+
+    std::thread::sleep(std::time::Duration::from_secs(1));
+
+    // Eval some JS that calls that command
+    let result = ipc.eval("window.__CROWSER.ipc.invoke('hello')").unwrap_or_default();
+    println!("Result: {:?}", result);
+  });
+
+  window.create()?;
+
+  Ok(())
+}
+```
+
 # How does it work?
 
 On a high level, Crowser works by first detecting browser installations on the user's system (using known paths and ~~registry keys~~). Then, depending on the browser chosen, it will make some specific changes to the browser's CLI arguments,
@@ -111,7 +154,7 @@ use shared_child::SharedChild;
 pub mod browser;
 mod cdp;
 pub mod error;
-pub mod ipc;
+mod ipc;
 mod util;
 mod webserver;
 
@@ -170,6 +213,7 @@ impl IntoContentConfig for RemoteConfig {
   }
 }
 
+/// The Window's IPC interface, used for evalling, events, etc.
 pub struct WindowIpc {
   inner: Arc<Mutex<Option<ipc::BrowserIpc>>>,
 }
@@ -179,6 +223,7 @@ impl WindowIpc {
     Self { inner: ipc }
   }
 
+  /// Wait until the IPC layer has made a connection with the window.
   pub fn block_until_initialized(&self) -> Result<(), CrowserError> {
     loop {
       std::thread::sleep(std::time::Duration::from_millis(100));
@@ -191,6 +236,7 @@ impl WindowIpc {
     }
   }
 
+  /// Eval JavaScript in the window.
   pub fn eval(&self, script: impl AsRef<str>) -> Result<Value, CrowserError> {
     let mut ipc = self.inner.lock().unwrap();
 
@@ -201,6 +247,7 @@ impl WindowIpc {
     Err(CrowserError::IpcError("No IPC".to_string()))
   }
 
+  /// Listen for events from the window.
   pub fn listen(
     &self,
     name: impl AsRef<str>,
@@ -215,6 +262,7 @@ impl WindowIpc {
     Err(CrowserError::IpcError("No IPC".to_string()))
   }
 
+  /// Register commands that the Window can emit.
   pub fn register_command(
     &self,
     name: impl AsRef<str>,

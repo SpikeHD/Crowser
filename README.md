@@ -119,27 +119,12 @@ fn main() -> Result<(), CrowserError> {
   };
 
   let mut window = Window::new(config, None, profile_dir)?;
-  let root_ipc = window.get_ipc();
+  let ipc = window.ipc();
 
   window.clear_profile().unwrap_or_default();
 
   std::thread::spawn(move || {
-    let mut ipc: BrowserIpc;
-
-    // Wait for IPC to be initialized
-    loop {
-      std::thread::sleep(std::time::Duration::from_millis(10));
-
-      let mut root_ipc = match root_ipc.try_lock() {
-        Ok(val) => val,
-        Err(_) => continue,
-      };
-
-      if let Some(root_ipc) = root_ipc.as_mut() {
-        ipc = root_ipc.clone();
-        break;
-      }
-    }
+    ipc.block_until_initialized().unwrap_or_default();
 
     ipc
       .register_command(
