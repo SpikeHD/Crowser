@@ -276,18 +276,18 @@ impl BrowserIpc {
     };
     let cmd = CDPCommand::new("Runtime.evaluate", params, Some(self.session_id.clone()));
     let result = cdp.send(cmd, None)?;
-    let res_type = result["result"]["result"]["type"].as_str().unwrap_or_default();
+    let res_type = result["result"]["result"]["type"]
+      .as_str()
+      .unwrap_or_default();
 
     if ["string", "number", "boolean", "bigint", "symbol"].contains(&res_type) {
       return match result["result"]["result"].get("value") {
         Some(val) => Ok(val.clone()),
-        None => {
-          Err(CrowserError::CDPError(format!(
-            "Eval: No result found in object: {:?}",
-            result
-          )))
-        }
-      }
+        None => Err(CrowserError::CDPError(format!(
+          "Eval: No result found in object: {:?}",
+          result
+        ))),
+      };
     }
 
     Ok(Value::Null)
