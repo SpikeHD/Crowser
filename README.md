@@ -119,10 +119,10 @@ fn main() -> Result<(), CrowserError> {
     ipc
       .register_command(
         "hello",
-        Box::new(|_| {
+        |_| {
           println!("Got hello command");
           Ok(serde_json::json!("Hello from Crowser!"))
-        }),
+        },
       )
       .unwrap_or_default();
 
