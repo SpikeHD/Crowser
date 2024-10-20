@@ -17,13 +17,10 @@ fn main() -> Result<(), CrowserError> {
     ipc.block_until_initialized().unwrap_or_default();
 
     ipc
-      .register_command(
-        "hello",
-        |_| {
-          println!("Got hello command");
-          Ok(serde_json::json!("Hello from Crowser!"))
-        },
-      )
+      .register_command("hello", |_| {
+        println!("Got hello command");
+        Ok(serde_json::json!("Hello from Crowser!"))
+      })
       .unwrap_or_default();
 
     std::thread::sleep(std::time::Duration::from_secs(1));

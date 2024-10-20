@@ -238,8 +238,7 @@ impl BrowserIpc {
                 RuntimeEvaluate {
                   expression: format!(
                     "window.__CROWSER.ipc._backend_respond('{}', {})",
-                    uuid,
-                    args
+                    uuid, args
                   ),
                   await_promise: Some(true),
                   return_by_value: Some(true),

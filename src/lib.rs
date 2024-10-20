@@ -176,9 +176,7 @@ pub struct WindowIpc {
 
 impl WindowIpc {
   pub fn new(ipc: Arc<Mutex<Option<ipc::BrowserIpc>>>) -> Self {
-    Self {
-      inner: ipc,
-    }
+    Self { inner: ipc }
   }
 
   pub fn block_until_initialized(&self) -> Result<(), CrowserError> {
@@ -203,7 +201,11 @@ impl WindowIpc {
     Err(CrowserError::IpcError("No IPC".to_string()))
   }
 
-  pub fn listen(&self, name: impl AsRef<str>, callback: fn(Value) -> Result<Value, CrowserError>) -> Result<(), CrowserError> {
+  pub fn listen(
+    &self,
+    name: impl AsRef<str>,
+    callback: fn(Value) -> Result<Value, CrowserError>,
+  ) -> Result<(), CrowserError> {
     let mut ipc = self.inner.lock().unwrap();
 
     if let Some(ipc) = ipc.as_mut() {
@@ -213,7 +215,11 @@ impl WindowIpc {
     Err(CrowserError::IpcError("No IPC".to_string()))
   }
 
-  pub fn register_command(&self, name: impl AsRef<str>, callback: fn(Value) -> Result<Value, CrowserError>) -> Result<(), CrowserError> {
+  pub fn register_command(
+    &self,
+    name: impl AsRef<str>,
+    callback: fn(Value) -> Result<Value, CrowserError>,
+  ) -> Result<(), CrowserError> {
     let mut ipc = self.inner.lock().unwrap();
 
     if let Some(ipc) = ipc.as_mut() {
@@ -492,11 +498,9 @@ impl Window {
     if !self.initialization_script.is_empty() {
       let ipc = self.ipc();
       let script = self.initialization_script.clone();
-      
+
       // Run the init script in it's own thread to prevent blocking the main thread
-      std::thread::spawn(move || {
-        ipc.eval(script).unwrap_or_default()
-      });
+      std::thread::spawn(move || ipc.eval(script).unwrap_or_default());
     }
 
     for signal in &[signal_hook::consts::SIGINT, signal_hook::consts::SIGTERM] {
