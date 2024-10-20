@@ -7,7 +7,7 @@ repository = "https://github.com/SpikeHD/Crowser"
 keywords = [ "browser", "desktop", "app", "webview", "crowser" ]
 categories = [ "gui", "web-programming" ]
 
-version = "0.3.0"
+version = "0.4.0"
 edition = "2021"
 rust-version = "1.70.0"
 license = "MIT"

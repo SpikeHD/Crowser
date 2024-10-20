@@ -22,7 +22,7 @@ If applicable, add screenshots or videos to help explain your problem.
 **System Info (please complete the following information):**
  - OS: [e.g. Windows 11, Ubuntu 22.04]
  - Browser Version (if applicable): [e.g. Chrome 100.0.4896.127]
- - Library Version: [e.g. 0.3.0]
+ - Library Version: [e.g. 0.4.0]
 
 **Additional info**
 Add any other information that may be relevant.
