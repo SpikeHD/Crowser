@@ -90,17 +90,7 @@ fn main() -> Result<(), CrowserError> {
 
   window.clean_profile()?;
 
-  // Since we're looping, we'll break when we successfully create the window. This will
-  // actually block the thread until the window is closed.
-  match window.create() {
-    Ok(_) => {
-      println!("Window created on port {}", port);
-      break;
-    }
-    Err(e) => {
-      println!("Error creating window on port {}: {:?}", port, e);
-    }
-  }
+  window.create()?;
 
   Ok(())
 }
