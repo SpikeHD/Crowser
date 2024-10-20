@@ -41,7 +41,7 @@ if (!window.__CROWSER) {
           await wait(5)
         }
 
-        window.__CROWSER.ipc.inbound_invokes[uuid].then(resolve).catch(reject)
+        resolve(window.__CROWSER.ipc.inbound_invokes[uuid])
       })
     },
     event: {
