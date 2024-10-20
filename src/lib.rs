@@ -105,6 +105,7 @@ use std::{
 use browser::{get_browser_path, Browser, BrowserKind};
 use error::CrowserError;
 use include_dir::Dir;
+use serde_json::Value;
 use shared_child::SharedChild;
 
 pub mod browser;
@@ -166,6 +167,48 @@ impl IntoContentConfig for LocalConfig {
 impl IntoContentConfig for RemoteConfig {
   fn into_content_config(self) -> ContentConfig {
     ContentConfig::Remote(self)
+  }
+}
+
+pub struct WindowIpc {
+  inner: Arc<Mutex<Option<ipc::BrowserIpc>>>,
+}
+
+impl WindowIpc {
+  pub fn new(ipc: Arc<Mutex<Option<ipc::BrowserIpc>>>) -> Self {
+    Self {
+      inner: ipc,
+    }
+  }
+
+  pub fn eval(&self, script: impl AsRef<str>) -> Result<Value, CrowserError> {
+    let mut ipc = self.inner.lock().unwrap();
+
+    if let Some(ipc) = ipc.as_mut() {
+      return ipc.eval(script);
+    }
+
+    Err(CrowserError::IpcError("No IPC".to_string()))
+  }
+
+  pub fn listen(&self, name: impl AsRef<str>, callback: fn(Value) -> Result<Value, CrowserError>) -> Result<(), CrowserError> {
+    let mut ipc = self.inner.lock().unwrap();
+
+    if let Some(ipc) = ipc.as_mut() {
+      return ipc.listen(name, Box::new(callback));
+    }
+
+    Err(CrowserError::IpcError("No IPC".to_string()))
+  }
+
+  pub fn register_command(&self, name: impl AsRef<str>, callback: fn(Value) -> Result<Value, CrowserError>) -> Result<(), CrowserError> {
+    let mut ipc = self.inner.lock().unwrap();
+
+    if let Some(ipc) = ipc.as_mut() {
+      ipc.register_command(name, Box::new(callback))?;
+    }
+
+    Ok(())
   }
 }
 
@@ -269,8 +312,7 @@ impl Window {
       remote.url = url.as_ref().to_string();
     }
 
-    let ipc = self.get_ipc();
-    let mut ipc = ipc.lock().unwrap();
+    let mut ipc = self.ipc.lock().unwrap();
 
     if let Some(ipc) = ipc.as_mut() {
       // TODO this feels wack, there is probably a CDP way to do this
@@ -313,9 +355,9 @@ impl Window {
     Ok(())
   }
 
-  /// Get a clone of the IPC handler, so you can use it in threads without bringing along the whole Window struct.
-  pub fn get_ipc(&self) -> Arc<Mutex<Option<ipc::BrowserIpc>>> {
-    self.ipc.clone()
+  /// Get IPC for sending commands, listening for events, etc.
+  pub fn ipc(&self) -> WindowIpc {
+    WindowIpc::new(self.ipc.clone())
   }
 
   /// Disable hardware acceleration in the browser window.

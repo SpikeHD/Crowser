@@ -9,23 +9,19 @@ fn main() -> Result<(), CrowserError> {
   };
 
   let mut window = Window::new(config, None, profile_dir)?;
-  let ipc = window.get_ipc();
+  let ipc = window.ipc();
 
   window.clear_profile().unwrap_or_default();
 
   std::thread::spawn(move || {
     std::thread::sleep(std::time::Duration::from_secs(5));
 
-    if let Some(ipc) = ipc.lock().unwrap().as_mut() {
-      let two = ipc.eval("1 + 1").unwrap();
-      println!("1 + 1 = {:?}", two);
-    }
+    let two = ipc.eval("1 + 1").unwrap();
+    println!("1 + 1 = {:?}", two);
 
     std::thread::sleep(std::time::Duration::from_secs(2));
 
-    if let Some(ipc) = ipc.lock().unwrap().as_mut() {
-      ipc.eval("alert('Hello from Crowser!')").unwrap_or_default();
-    }
+    ipc.eval("alert('Hello from Crowser!')").unwrap_or_default();
   });
 
   window.create()?;
