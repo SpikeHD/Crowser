@@ -179,6 +179,78 @@ impl BrowserIpc {
             ipc.inject();
           }
         }
+
+        let ipc = match root_ipc.try_lock() {
+          Ok(val) => val,
+          Err(_) => continue,
+        };
+
+        // Now use eval to read from `_backend_consume()` on the JS side
+        let mut cdp = match ipc.cdp.try_lock() {
+          Ok(val) => val,
+          Err(_) => continue,
+        };
+
+        let cmd = CDPCommand::new(
+          "Runtime.evaluate",
+          RuntimeEvaluate {
+            expression: "window.__CROWSER.ipc._backend_consume()".to_string(),
+            await_promise: Some(true),
+            return_by_value: Some(true),
+          },
+          Some(ipc.session_id.clone()),
+        );
+        let result = match cdp.send(cmd, None) {
+          Ok(val) => val,
+          Err(_) => continue,
+        };
+        let result = result["result"]["result"].get("value");
+
+        drop(cdp);
+        drop(ipc);
+
+        // This is an object with a 'cmd', an 'args' map, and a 'uuid' string
+        if let Some(result) = result {
+          let result = result.as_object();
+
+          if let Some(result) = result {
+            let cmd = result.get("cmd");
+            let args = result.get("args");
+            let uuid = result.get("uuid");
+
+            // Requires lock here because we are mutating the IPC array, we will never get the command again otherwise!
+            if let (Some(cmd), Some(args), Some(uuid), Ok(mut ipc)) =
+              (cmd, args, uuid, root_ipc.lock())
+            {
+              let cmd = cmd.as_str().unwrap_or_default();
+              let uuid = uuid.as_str().unwrap_or_default();
+
+              // We don't care about the result, we just want to make sure the command is handled
+              ipc
+                .handle_command(cmd, args.clone(), uuid)
+                .unwrap_or_default();
+
+              let mut cdp = ipc.cdp.lock().unwrap();
+
+              // Send a response to the JS side
+              let cmd = CDPCommand::new(
+                "Runtime.evaluate",
+                RuntimeEvaluate {
+                  expression: format!(
+                    "window.__CROWSER.ipc._backend_respond('{}', {})",
+                    uuid,
+                    args
+                  ),
+                  await_promise: Some(true),
+                  return_by_value: Some(true),
+                },
+                Some(ipc.session_id.clone()),
+              );
+
+              cdp.send(cmd, None).unwrap_or_default();
+            }
+          }
+        }
       }
     });
 
@@ -201,6 +273,7 @@ impl BrowserIpc {
     let params = RuntimeEvaluate {
       expression: script.as_ref().to_string(),
       await_promise: Some(true),
+      return_by_value: Some(true),
     };
     let cmd = CDPCommand::new("Runtime.evaluate", params, Some(self.session_id.clone()));
     let result = cdp.send(cmd, None)?;
@@ -261,6 +334,24 @@ impl BrowserIpc {
     }
 
     listeners.insert(name.as_ref().to_string(), vec![callback]);
+
+    Ok(())
+  }
+
+  pub fn handle_command(
+    &mut self,
+    cmd: impl AsRef<str>,
+    args: Value,
+    _uuid: impl AsRef<str>,
+  ) -> Result<(), CrowserError> {
+    let mut commands = self.commands.lock().unwrap();
+    let cmd = cmd.as_ref();
+
+    if let Some(callbacks) = commands.get_mut(cmd) {
+      for callback in callbacks.iter_mut() {
+        callback(args.clone()).unwrap_or_default();
+      }
+    }
 
     Ok(())
   }
