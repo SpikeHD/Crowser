@@ -14,7 +14,7 @@ fn main() -> Result<(), CrowserError> {
   window.clear_profile().unwrap_or_default();
 
   std::thread::spawn(move || {
-    std::thread::sleep(std::time::Duration::from_secs(5));
+    ipc.block_until_initialized().unwrap_or_default();
 
     let two = ipc.eval("1 + 1").unwrap();
     println!("1 + 1 = {:?}", two);

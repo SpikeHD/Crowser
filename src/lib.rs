@@ -181,6 +181,18 @@ impl WindowIpc {
     }
   }
 
+  pub fn block_until_initialized(&self) -> Result<(), CrowserError> {
+    loop {
+      std::thread::sleep(std::time::Duration::from_millis(100));
+
+      if let Ok(ipc) = self.inner.try_lock() {
+        if ipc.is_some() {
+          return Ok(());
+        }
+      }
+    }
+  }
+
   pub fn eval(&self, script: impl AsRef<str>) -> Result<Value, CrowserError> {
     let mut ipc = self.inner.lock().unwrap();
 

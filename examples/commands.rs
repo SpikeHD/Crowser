@@ -14,6 +14,8 @@ fn main() -> Result<(), CrowserError> {
   window.clear_profile().unwrap_or_default();
 
   std::thread::spawn(move || {
+    ipc.block_until_initialized().unwrap_or_default();
+
     ipc
       .register_command(
         "hello",
