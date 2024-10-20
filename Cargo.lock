@@ -70,7 +70,7 @@ dependencies = [
 
 [[package]]
 name = "crowser"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "flume",
  "include_dir",
