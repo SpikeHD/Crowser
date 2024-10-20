@@ -476,6 +476,17 @@ impl Window {
     let ipc = ipc::BrowserIpc::new(remote_debugging_port)?;
     self.ipc.lock().unwrap().replace(ipc);
 
+    // Once IPC has connected, run the initialization script
+    if !self.initialization_script.is_empty() {
+      let ipc = self.ipc();
+      let script = self.initialization_script.clone();
+      
+      // Run the init script in it's own thread to prevent blocking the main thread
+      std::thread::spawn(move || {
+        ipc.eval(script).unwrap_or_default()
+      });
+    }
+
     for signal in &[signal_hook::consts::SIGINT, signal_hook::consts::SIGTERM] {
       let terminated = terminated.clone();
       signal_hook::flag::register(*signal, terminated)?;
