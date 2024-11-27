@@ -11,28 +11,37 @@ fn main() -> Result<(), CrowserError> {
   let mut window = Window::new(config, None, profile_dir)?;
   let ipc = window.ipc();
 
+  let ipc_thread = std::thread::spawn(move || setup_commands(&ipc));
+
   window.clear_profile().unwrap_or_default();
 
   std::thread::spawn(move || {
-    ipc.block_until_initialized().unwrap_or_default();
 
-    ipc
-      .register_command("hello", |_| {
-        println!("Got hello command");
-        Ok(serde_json::json!("Hello from Crowser!"))
-      })
-      .unwrap_or_default();
-
-    std::thread::sleep(std::time::Duration::from_secs(1));
-
-    // Eval some JS that calls that command
-    let result = ipc
-      .eval("window.__CROWSER.ipc.invoke('hello')")
-      .unwrap_or_default();
-    println!("Result: {:?}", result);
   });
 
   window.create()?;
+
+  ipc_thread.join().expect("Failed to join IPC thread").expect("IPC thread panicked");
+
+  Ok(())
+}
+
+fn setup_commands(ipc: &crowser::WindowIpc) -> Result<(), CrowserError> {
+  ipc.block_until_initialized()?;
+
+  ipc
+    .register_command("hello", |_| {
+      println!("Got hello command");
+      Ok(serde_json::json!("Hello from Crowser!"))
+    })?;
+
+  std::thread::sleep(std::time::Duration::from_secs(1));
+
+  println!("Waiting for result...");
+  // Eval some JS that calls that command
+  let result = ipc
+    .eval("window.__CROWSER.ipc.invoke('hello')")?;
+  println!("Result: {:?}", result);
 
   Ok(())
 }

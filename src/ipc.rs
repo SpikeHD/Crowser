@@ -17,7 +17,7 @@ use crate::{
 };
 
 type IpcRegistrationMap =
-  Arc<Mutex<HashMap<String, Vec<Box<dyn Fn(Value) -> Result<Value, CrowserError> + Send + Sync>>>>>;
+  Arc<Mutex<HashMap<String, Vec<Box<dyn FnMut(Value) -> Result<Value, CrowserError> + Send + Sync + 'static>>>>>;
 
 #[derive(Clone)]
 pub struct BrowserIpc {
@@ -324,7 +324,9 @@ impl BrowserIpc {
     };
 
     let cmd = CDPCommand::new("Runtime.evaluate", params, Some(self.session_id.clone()));
+    println!("Before send: {:?}", cmd);
     let result = cdp.send(cmd, None)?;
+    println!("After send: {:?}", result["result"]["result"]);
     let res_type = result["result"]["result"]["type"]
       .as_str()
       .unwrap_or_default();
@@ -345,7 +347,7 @@ impl BrowserIpc {
   pub fn register_command(
     &mut self,
     name: impl AsRef<str>,
-    callback: fn(Value) -> Result<Value, CrowserError>,
+    callback: impl FnMut(Value) -> Result<Value, CrowserError> + Send + Sync + 'static,
   ) -> Result<(), CrowserError> {
     let mut commands = self.commands.lock().unwrap();
 
@@ -363,7 +365,7 @@ impl BrowserIpc {
   pub fn listen(
     &mut self,
     name: impl AsRef<str>,
-    callback: Box<dyn Fn(Value) -> Result<Value, CrowserError> + Send + Sync>,
+    callback: Box<dyn FnMut(Value) -> Result<Value, CrowserError> + Send + Sync + 'static>,
   ) -> Result<(), CrowserError> {
     let mut listeners = self.listeners.lock().unwrap();
 

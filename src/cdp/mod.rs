@@ -167,7 +167,7 @@ impl Cdp {
       let timeout = timeout.unwrap_or(std::time::Duration::from_secs(1));
       let now = std::time::Instant::now();
 
-      // Wait for a response in the manager using try_lock and the timeout
+      // Wait for a response
       loop {
         // Wait an amount of time, to prevent a tight loop
         std::thread::sleep(std::time::Duration::from_millis(1));

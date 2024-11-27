@@ -256,7 +256,7 @@ impl WindowIpc {
   pub fn register_command(
     &self,
     name: impl AsRef<str>,
-    callback: fn(Value) -> Result<Value, CrowserError>,
+    callback: impl FnMut(Value) -> Result<Value, CrowserError> + Send + Sync + 'static,
   ) -> Result<(), CrowserError> {
     let mut ipc = self.inner.lock().unwrap();
 
