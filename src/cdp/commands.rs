@@ -102,3 +102,15 @@ pub struct TargetAttachToTarget {
   pub target_id: String,
   pub flatten: bool,
 }
+
+#[derive(Serialize, Deserialize)]
+pub struct PageAddScriptToEvaluateOnNewDocument {
+  pub source: String,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PageReload {
+  pub ignore_cache: Option<bool>,
+  pub script_to_evaluate_on_load: Option<String>,
+}

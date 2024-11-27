@@ -261,7 +261,7 @@ impl WindowIpc {
     let mut ipc = self.inner.lock().unwrap();
 
     if let Some(ipc) = ipc.as_mut() {
-      ipc.register_command(name, Box::new(callback))?;
+      ipc.register_command(name, callback)?;
     }
 
     Ok(())
@@ -529,17 +529,8 @@ impl Window {
     self.process_handle = Some(SharedChild::new(process)?);
 
     // Now that the process is running, we can start attempting to connect to it with IPC
-    let ipc = ipc::BrowserIpc::new(remote_debugging_port)?;
+    let ipc = ipc::BrowserIpc::new(remote_debugging_port, self.initialization_script.clone())?;
     self.ipc.lock().unwrap().replace(ipc);
-
-    // Once IPC has connected, run the initialization script
-    if !self.initialization_script.is_empty() {
-      let ipc = self.ipc();
-      let script = self.initialization_script.clone();
-
-      // Run the init script in it's own thread to prevent blocking the main thread
-      std::thread::spawn(move || ipc.eval(script).unwrap_or_default());
-    }
 
     for signal in &[signal_hook::consts::SIGINT, signal_hook::consts::SIGTERM] {
       let terminated = terminated.clone();

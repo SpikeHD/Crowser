@@ -9,7 +9,7 @@ use serde_json::Value;
 use crate::{
   cdp::{
     self,
-    commands::{CDPCommand, RuntimeEvaluate, TargetAttachToTarget, TargetGetTargets},
+    commands::{CDPCommand, RuntimeEvaluate, TargetAttachToTarget, TargetGetTargets, TargetSetDiscoverTargets},
     Cdp,
   },
   error::CrowserError,
@@ -23,6 +23,7 @@ type IpcRegistrationMap =
 pub struct BrowserIpc {
   cdp: Arc<Mutex<Cdp>>,
   session_id: String,
+  browser_session_id: String,
   attached: bool,
 
   commands: IpcRegistrationMap,
@@ -48,11 +49,12 @@ impl Debug for BrowserIpc {
 }
 
 impl BrowserIpc {
-  pub fn new(port: u16) -> Result<Self, CrowserError> {
-    let cdp = cdp::launch(port)?;
+  pub fn new(port: u16, initialization_script: impl AsRef<str>) -> Result<Self, CrowserError> {
+    let cdp = cdp::launch(port, initialization_script)?;
     let mut ipc = BrowserIpc {
       cdp: Arc::new(Mutex::new(cdp)),
       session_id: String::new(),
+      browser_session_id: String::new(),
       attached: false,
 
       commands: Arc::new(Mutex::new(HashMap::new())),
@@ -60,15 +62,33 @@ impl BrowserIpc {
     };
 
     ipc.attach()?;
-    ipc.event_loop()?;
 
-    ipc.inject();
+    let mut cb_ipc = ipc.clone();
+
+    // Page.loadeventfired
+    ipc.cdp.lock().unwrap().on("Page.loadEventFired", move |cdp, _value| {
+      cb_ipc.eval(cdp.initialization_script.clone()).unwrap_or_default();
+      cb_ipc.inject();
+      Ok(Value::Null)
+    }).expect("Failed to register listener");
+
+    // Kill the process if Target.targetDestroyed is fired
+    ipc.cdp.lock().unwrap().on("Target.targetDestroyed", move |_cdp, _value| {
+      std::process::exit(0);
+    }).expect("Failed to register listener");
+
+    // reload
+    let cmd = CDPCommand::new("Page.reload", serde_json::Value::Null, Some(ipc.session_id.clone()));
+    ipc.cdp.lock().unwrap().send(cmd, None)?;
+
+    ipc.event_loop()?;
 
     Ok(ipc)
   }
 
   fn attach(&mut self) -> Result<(), CrowserError> {
     let mut cdp = self.cdp.lock().unwrap();
+
     // Get targets
     let t_params = TargetGetTargets {};
     let t_cmd = CDPCommand::new("Target.getTargets", t_params, None);
@@ -116,8 +136,36 @@ impl BrowserIpc {
       }
     }
 
-    // Runtime.enable
-    // This is a fix for Firefox
+    // Set discover targets
+    let cmd = CDPCommand::new("Target.setDiscoverTargets", TargetSetDiscoverTargets {
+      discover: true,
+    }, None);
+    cdp.send(cmd, None)?;
+
+    // Attach to the browser session
+    let cmd = CDPCommand::new(
+      "Target.attachToBrowserTarget",
+      serde_json::Value::Null,
+      None,
+    );
+
+    let b_result = cdp.send(cmd, None)?;
+    let b_result = b_result["result"]["params"].get("sessionId");
+
+    if let Some(b_result) = b_result {
+      self.browser_session_id = b_result.as_str().unwrap_or_default().to_string();
+    }
+
+    // Page enable
+    let cmd = CDPCommand::new(
+      "Page.enable",
+      serde_json::Value::Null,
+      Some(self.session_id.clone()),
+    );
+    cdp.send(cmd, None)?;
+
+    // Runtime enable
+    // This is partially a fix for Firefox
     // lol: https://bugzilla.mozilla.org/show_bug.cgi?id=1623482#c12
     let cmd = CDPCommand::new(
       "Runtime.enable",
@@ -259,7 +307,7 @@ impl BrowserIpc {
   pub fn wait_until_attached(&mut self) -> Result<(), CrowserError> {
     #[allow(clippy::while_immutable_condition)]
     while !self.attached {
-      std::thread::sleep(std::time::Duration::from_millis(100));
+      std::thread::sleep(std::time::Duration::from_millis(10));
     }
 
     Ok(())
@@ -274,6 +322,7 @@ impl BrowserIpc {
       await_promise: Some(true),
       return_by_value: Some(true),
     };
+
     let cmd = CDPCommand::new("Runtime.evaluate", params, Some(self.session_id.clone()));
     let result = cdp.send(cmd, None)?;
     let res_type = result["result"]["result"]["type"]
@@ -296,7 +345,7 @@ impl BrowserIpc {
   pub fn register_command(
     &mut self,
     name: impl AsRef<str>,
-    callback: Box<dyn Fn(Value) -> Result<Value, CrowserError> + Send + Sync>,
+    callback: fn(Value) -> Result<Value, CrowserError>,
   ) -> Result<(), CrowserError> {
     let mut commands = self.commands.lock().unwrap();
 
@@ -306,7 +355,7 @@ impl BrowserIpc {
       return Err(CrowserError::IpcError("Command already exists".to_string()));
     }
 
-    commands.insert(name.as_ref().to_string(), vec![callback]);
+    commands.insert(name.as_ref().to_string(), vec![Box::new(callback)]);
 
     Ok(())
   }

@@ -1,7 +1,6 @@
+use std::fmt::Debug;
 use std::{
-  collections::HashMap,
-  sync::{Arc, Mutex},
-  vec,
+  collections::HashMap, sync::{Arc, Mutex}, vec
 };
 
 use commands::CDPCommand;
@@ -12,6 +11,9 @@ use tungstenite::Message;
 use crate::error::CrowserError;
 
 pub mod commands;
+
+type CdpRegistrationMap =
+  Arc<Mutex<HashMap<String, Vec<Arc<Mutex<Box<dyn FnMut(&Cdp, Value) -> Result<Value, CrowserError> + Send + Sync>>>>>>>;
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -46,10 +48,20 @@ struct CDPMessage {
   result: Value,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 struct CDPIpcManager {
   session_messages: HashMap<String, CDPMessage>,
   events: Vec<CDPCommand>,
+  responders: CdpRegistrationMap,
+}
+
+impl Debug for CDPIpcManager {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    f.debug_struct("CDPIpcManager")
+      .field("session_messages", &self.session_messages)
+      .field("events", &self.events)
+      .finish()
+  }
 }
 
 #[derive(Debug, Clone)]
@@ -57,10 +69,11 @@ pub struct Cdp {
   cmd_id: usize,
   cmd: CDPMessenger,
   manager: Arc<Mutex<CDPIpcManager>>,
+  pub initialization_script: String,
 }
 
 impl Cdp {
-  pub fn new() -> Self {
+  pub fn new(intialization_script: impl AsRef<str>) -> Self {
     let (cmd_tx, cmd_rx) = flume::unbounded();
 
     Cdp {
@@ -69,11 +82,28 @@ impl Cdp {
         tx: cmd_tx,
         rx: cmd_rx,
       },
+      initialization_script: intialization_script.as_ref().to_string(),
       manager: Arc::new(Mutex::new(CDPIpcManager {
         session_messages: HashMap::new(),
         events: Vec::new(),
+        responders: Arc::new(Mutex::new(HashMap::new())),
       })),
     }
+  }
+
+  pub fn on(&mut self, name: impl AsRef<str>, callback: impl FnMut(&Cdp, Value) -> Result<Value, CrowserError> + Send + Sync + 'static) -> Result<(), CrowserError> {
+    let manager = self.manager.lock().unwrap();
+    let mut responders = manager.responders.lock().unwrap();
+
+    // Check if command already exists
+    if responders.contains_key(name.as_ref()) {
+      // Throw error
+      return Err(CrowserError::IpcError("Command already exists".to_string()));
+    }
+
+    responders.insert(name.as_ref().to_string(), vec![Arc::new(Mutex::new(Box::new(callback)))]);
+
+    Ok(())
   }
 
   pub fn connect(&mut self, port: u16) -> Result<(), CrowserError> {
@@ -99,8 +129,9 @@ impl Cdp {
 
     let rx = self.cmd.rx.clone();
     let manager = self.manager.clone();
+    let mut cdp = self.clone();
 
-    std::thread::spawn(move || ws_executor(manager, ws_url, rx));
+    std::thread::spawn(move || ws_executor(&mut cdp, manager, ws_url, rx));
 
     Ok(())
   }
@@ -138,6 +169,9 @@ impl Cdp {
 
       // Wait for a response in the manager using try_lock and the timeout
       loop {
+        // Wait an amount of time, to prevent a tight loop
+        std::thread::sleep(std::time::Duration::from_millis(1));
+
         match manager.try_lock() {
           Ok(manager) => {
             if let Some(msg) = manager.session_messages.get(&id.to_string()) {
@@ -222,6 +256,7 @@ impl Cdp {
 }
 
 fn ws_executor(
+  cdp: &mut Cdp,
   manager: Arc<Mutex<CDPIpcManager>>,
   url: impl AsRef<str>,
   rx: flume::Receiver<String>,
@@ -253,6 +288,7 @@ fn ws_executor(
     let cmd = rx.try_recv().unwrap_or_default();
 
     if !cmd.is_empty() {
+      //println!("> {:?}", cmd);
       ws.send(cmd.into()).map_err(|e| {
         CrowserError::CDPError("Could not send command: ".to_string() + &e.to_string())
       })?;
@@ -264,8 +300,27 @@ fn ws_executor(
 
       // If it doesn't have an ID, it's an event, otherwise it's a response
       if msg["id"].is_null() {
+        // println!("! {}", msg);
         messages.events.push(CDPCommand::from(msg.to_string()));
+
+        // Run callback if it exists
+        let mut responders = messages.responders.lock().unwrap();
+
+        if let Some(responders) = responders.get_mut(msg["method"].as_str().unwrap_or_default()) {
+          for callback in responders.iter_mut() {
+            let callback = callback.clone();
+            let cdp = cdp.clone();
+            let msg = msg.clone();
+
+            // Run callback in a new thread to prevent blocking
+            std::thread::spawn(move || {
+              let mut cb = callback.lock().unwrap();
+              cb(&cdp, msg["params"].clone()).unwrap_or_default();
+            });
+          }
+        }
       } else {
+        //println!("< {}", msg);
         messages
           .session_messages
           .insert(msg["id"].to_string(), CDPMessage { result: msg });
@@ -274,8 +329,8 @@ fn ws_executor(
   }
 }
 
-pub fn launch(port: u16) -> Result<Cdp, CrowserError> {
-  let mut cdp = Cdp::new();
+pub fn launch(port: u16, initialization_script: impl AsRef<str>) -> Result<Cdp, CrowserError> {
+  let mut cdp = Cdp::new(initialization_script);
   cdp.connect(port)?;
   Ok(cdp)
 }
